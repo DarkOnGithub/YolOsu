@@ -114,7 +114,6 @@ class Bezier:
         self.calc_points()
 
     def at(self, t: int):
-
         # B(t) = sum_(i=0) ^ n(iparmisn) (1 - t) ^ (n - i) * t ^ i * P_i
         if t in self.pos:
             return self.pos[t]

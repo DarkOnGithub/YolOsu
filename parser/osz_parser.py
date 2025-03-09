@@ -1,6 +1,7 @@
 import zipfile
 import tomllib
-
+from emulator.objects import HitCircle, Slider
+import utils.utils as utils
 def extract_osu_file(osz_path):
     with zipfile.ZipFile(osz_path, "r") as z:
             file_list = z.namelist()
@@ -27,7 +28,7 @@ def parse_osu_file(osu_content):
             continue
             
         if line.startswith('[') and line.endswith(']'):
-            current_section = line[1:-1]  # Remove brackets
+            current_section = line[1:-1]
             sections[current_section] = []
             continue
             
@@ -36,12 +37,33 @@ def parse_osu_file(osu_content):
     
     return sections    
 
+def parse_hit_objects(hit_objects):
+    objects = []
+    for line in hit_objects:
+        x, y, time, type, _, *params = line.split(",")
+        x, y = int(x), int(y)
+        type = int(type)
+        slider = utils.nth_bit_set(type, 1)
+        hit_circle = utils.nth_bit_set(type, 0)
+    
+        if slider and hit_circle:
+            print("??")
+            continue
+        
+        if hit_circle:
+            objects.append(HitCircle(x, y, time))
+
+        if slider:
+            curve_info = params[0].split("|")
+            curve_type = curve_info[0]
+            curve_points = [(int(x.split(":")[0]), int(x.split(":")[1])) for x in curve_info[1:]]
+            length = int(params[1])
+            objects.append(Slider(x, y, time, curve_type, curve_points, length))
+    return objects
 
 def parse_osz_file(osz_path):
     content = extract_osu_file(osz_path)
     if content is None:
         return None
-    
-    for k, v in parse_osu_file(content).items():
-        print(k,len(v))
+    return parse_hit_objects(parse_osu_file(content)['HitObjects'])    
         
