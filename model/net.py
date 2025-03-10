@@ -1,8 +1,8 @@
 from torch import nn
 import torch
 
-#tuple: [out, kernel, padding]
-#list: Residual block + repeats
+
+
 
 config = [
     (32, 3, 1),
@@ -73,8 +73,8 @@ class ScalePrediction(nn.Module):
         self.classes = classes
     
     def forward(self, X):
-        #reshape: [batch, anchors, classes +5, h, w]
-        #permute: [batch, anchors, w, h, classes + 5]
+        
+        
         return (self.prediction(X)
                 .reshape(X.shape[0], 3, self.classes + 5, X.shape[2],X.shape[3])
                 .permute(0, 1, 3, 4, 2)

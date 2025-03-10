@@ -1,86 +1,104 @@
 import zipfile
-import tomllib
+from typing import Dict, List, Optional, Tuple
 from emulator.objects import HitCircle, Slider
 from emulator import Beatmap
 import utils.utils as utils
 import re
 
+def extract_osu_file(osz_path: str) -> Dict[str, str]:
 
-def extract_osu_file(osz_path):
     difficulties = {}
-    with zipfile.ZipFile(osz_path, "r") as z:
-            file_list = z.namelist()
-            target_files = [f for f in file_list if f.lower().endswith(".osu")]
-            for file in target_files:
+    try:
+        with zipfile.ZipFile(osz_path, "r") as z:
+            
+            osu_files = (f for f in z.namelist() if f.lower().endswith(".osu"))
+            for file in osu_files:
                 with z.open(file) as f:
                     difficulty = utils.get_difficulty(file)
                     if difficulty is None:
                         print(f"Could not find difficulty for {file}")
                         continue
-                    content = f.read().decode('utf-8', errors='replace')
+                    
+                    content = f.read().decode('utf-8-sig', errors='replace')
                     difficulties[difficulty] = content
+    except zipfile.BadZipFile:
+        print(f"Error: Invalid .osz file at {osz_path}")
     return difficulties
 
-def parse_osu_file(osu_content):
+def parse_osu_file(osu_content: str) -> Optional[Dict[str, List[str]]]:
+
     if not osu_content:
         return None
         
-    sections = {}
+    sections: Dict[str, List[str]] = {}
     current_section = None
     
-    for line in osu_content.splitlines():
-        line = line.strip()
-        
-        if not line:
-            continue
-            
-        if line.startswith('[') and line.endswith(']'):
+    
+    
+    lines = (line.strip() for line in osu_content.splitlines() if line.strip())
+    
+    for line in lines:
+        if line[0] == '[' and line[-1] == ']':
             current_section = line[1:-1]
             sections[current_section] = []
-            continue
-            
-        if current_section:
+        elif current_section is not None:
             sections[current_section].append(line)
     
-    return sections    
+    return sections
 
-def parse_hit_objects(hit_objects):
+def parse_hit_objects(hit_objects: List[str]) -> List:
     objects = []
-    for line in hit_objects:
-        x, y, time, type, _, *params = line.split(",")
-        x, y = utils.osu_pixels_to_normal_coords(int(x), int(y), 192, 144)
-        type = int(type)
-        slider = utils.nth_bit_set(type, 1)
-        hit_circle = utils.nth_bit_set(type, 0)
+    
+    
+    curve_split = re.compile(r":")
+    
+    for i, line in enumerate(hit_objects):
+        parts = line.split(",")
+        x, y, time, type_ = map(int, parts[:4])
+        params = parts[5:]
         
-        if hit_circle:
+        
+        is_slider = type_ & 2  
+        is_circle = type_ & 1  
+        
+        if is_circle:
             objects.append(HitCircle(x, y, time))
-
-        if slider:
+            
+        if is_slider and params:
             curve_info = params[0].split("|")
             curve_type = curve_info[0]
-            curve_points = [(int(x.split(":")[0]), int(x.split(":")[1])) for x in curve_info[1:]]
+            
+            curve_points = [tuple(map(int, curve_split.split(p))) 
+                          for p in curve_info[1:]]
             length = int(params[1])
             objects.append(Slider(x, y, time, curve_type, curve_points, length))
             
     return objects
 
-def parse_difficulty(sections):
+def parse_difficulty(sections: Dict[str, List[str]]) -> Optional[List[float]]:
     difficulty_section = sections.get("Difficulty")
-    if difficulty_section:
-        matches = re.findall(r":([\d.]+)", "\n".join(difficulty_section))
-        return list(map(float, matches))
-    return None
+    if not difficulty_section:
+        return None
+        
+    
+    pattern = re.compile(r":([\d.]+)")
+    return [float(match.group(1)) 
+            for match in pattern.finditer("\n".join(difficulty_section))]
 
+def parse_osz_file(osz_path: str) -> Beatmap.Beatmap:
 
-
-def parse_osz_file(osz_path):
-    difficulties = extract_osu_file(osz_path)
     beatmap = Beatmap.Beatmap()
+    difficulties = extract_osu_file(osz_path)
+    
+    if not difficulties:
+        return beatmap
+    print(f"Extracted difficulties: {list(difficulties.keys())}")
     for diff, content in difficulties.items():
+        print(f"Parsing difficulty: {diff}")
         sections = parse_osu_file(content)
-        hit_objects = sections.get("HitObjects")
-        objects = parse_hit_objects(hit_objects)
-        difficulty = parse_difficulty(sections)
-        beatmap.add_difficulty(diff, objects, difficulty)
+        if sections and "HitObjects" in sections:
+            objects = parse_hit_objects(sections["HitObjects"])
+            difficulty = parse_difficulty(sections)
+            beatmap.add_difficulty(diff, objects, difficulty)
+            
     return beatmap

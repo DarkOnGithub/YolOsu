@@ -2,23 +2,32 @@ import numpy as np
 import math
 import cv2
 import utils.curves as curve
+from utils.utils import osu_pixels_to_normal_coords
+
 class HitObject:
-    def __init__(self, x, y, time):
-        self.x, self.y = x, y 
+    def __init__(self, x, y, time, resolution_width=192, resolution_height=144):
+        
+        self.osu_x, self.osu_y = x, y
         self.time = int(time)
+        
+        
+        self.x, self.y = osu_pixels_to_normal_coords(x, y, resolution_width, resolution_height)
+        self.resolution_width = resolution_width
+        self.resolution_height = resolution_height
+    
+    def convert_point(self, x, y):
+        return osu_pixels_to_normal_coords(x, y, self.resolution_width, self.resolution_height)
     
     def get_segmentation_polygon(self, r):
-        """Must be implemented by subclasses"""
         raise NotImplementedError
         
     def get_segmentation_mask(self, width, height, r):
-        """Must be implemented by subclasses"""
         raise NotImplementedError
 
 
 class HitCircle(HitObject):
-    def __init__(self, x, y, time):
-        super().__init__(x, y, time)
+    def __init__(self, x, y, time, resolution_width=192, resolution_height=144):
+        super().__init__(x, y, time, resolution_width, resolution_height)
         
     def get_bounding_box(self, r):
         top_left = (self.x - r, self.y - r)
@@ -29,16 +38,6 @@ class HitCircle(HitObject):
         return (top_left, top_right, bottom_right, bottom_left)
     
     def get_segmentation_polygon(self, r, num_points=32):
-        """
-        Returns polygon points for a circle to use with YOLO v8 segmentation
-        
-        Args:
-            r (float): Radius of the circle
-            num_points (int): Number of points to use for the polygon approximation
-            
-        Returns:
-            list: List of (x,y) tuples representing polygon vertices
-        """
         polygon = []
         for i in range(num_points):
             angle = 2 * math.pi * i / num_points
@@ -49,151 +48,182 @@ class HitCircle(HitObject):
         return polygon
     
     def get_segmentation_mask(self, width, height, r):
-        """
-        Creates a binary mask for the circle
-        
-        Args:
-            width (int): Width of the mask
-            height (int): Height of the mask
-            r (float): Radius of the circle
-            
-        Returns:
-            np.ndarray: Binary mask where 1 indicates the hitcircle
-        """
         mask = np.zeros((height, width), dtype=np.uint8)
         
-        # Create coordinate grids
         y_coords, x_coords = np.ogrid[:height, :width]
         
-        # Calculate distance from center
         dist = np.sqrt((x_coords - self.x) ** 2 + (y_coords - self.y) ** 2)
         
-        # Set mask to 1 inside the circle
         mask[dist <= r] = 1
         
         return mask
           
-class Slider(HitObject):
-    def __init__(self, x, y, time, curve_type, curve_points, length):
-        super().__init__(x, y, time)
-        curve_type = curve_type.lower()
-        if curve_type == "b":
-            self.curve = curve.Bezier(curve_points)
-        elif curve_type == "c":
-            self.curve = curve.Catmull(curve_points)
-        self.curve_points = curve_points
-        self.length = length
     
-    def get_segmentation_polygon(self, r, num_samples=50):
-        """
-        Returns polygon points for a slider to use with YOLO v8 segmentation
+class Slider(HitObject):
+    def __init__(self, x, y, time, curve_type, curve_points, length, resolution_width=192, resolution_height=144):
+        super().__init__(x, y, time, resolution_width, resolution_height)
+        self.curve_type = curve_type.lower()
         
-        Args:
-            r (float): Radius of the slider path
-            num_samples (int): Number of points to sample along the slider
-            
-        Returns:
-            list: List of (x,y) tuples representing polygon vertices
-        """
-        # Sample points along the actual curve
-        path_points = []
-        start_point = (self.x, self.y)
-        path_points.append(start_point)
         
-        # Sample points from the curve
-        if hasattr(self, 'curve'):
-            for i in range(1, num_samples + 1):
-                t = i / num_samples
-                # For Bezier curves
-                if hasattr(self.curve, 'at'):
-                    point = self.curve.at(t)
-                    path_points.append((point[0], point[1]))
-                # For Catmull curves or other types
-                elif hasattr(self.curve, 'point_at_distance'):
-                    distance = t * self.length
-                    point = self.curve.point_at_distance(distance)
-                    if point:
-                        path_points.append((point[0], point[1]))
+        self.curve_points = []
+        for point_x, point_y in curve_points:
+            screen_x, screen_y = self.convert_point(point_x, point_y)
+            self.curve_points.append((screen_x, screen_y))
+        
+        
+        scale_factor = self.resolution_height * 0.8 / 384  
+        self.length = int(float(length) * scale_factor)
+        
+        
+        curve_points_with_start = [(self.x, self.y)] + self.curve_points
+        
+        if self.curve_type == "b":
+            self.curve = curve.Bezier(curve_points_with_start)
+        elif self.curve_type == "c":
+            self.curve = curve.Catmull(curve_points_with_start) 
+        elif self.curve_type == "l":
+            self.curve = curve.Linear(curve_points_with_start)
+        elif self.curve_type == "p":
+            self.curve = curve.PassThrough(curve_points_with_start)
         else:
-            # Fallback to control points if curve object is missing
-            for point in self.curve_points:
-                path_points.append(point)
-        
-        # Generate left and right boundaries along the path
-        left_boundary = []
-        right_boundary = []
-        
-        for i in range(len(path_points) - 1):
-            p1 = path_points[i]
-            p2 = path_points[i + 1]
+            self.curve = curve.Bezier(curve_points_with_start)
             
-            # Find the normal vector to the path
+    def get_segmentation_polygon(self, r, num_samples=50):
+
+        
+        curve_points = []
+        step = 1.0 / num_samples
+        
+        for i in range(num_samples + 1):
+            t = i * step
+            distance = t * self.curve.pxlength
+            point = self.curve.point_at_distance(distance)
+            if point:
+                curve_points.append(point)
+        
+        if len(curve_points) < 2:
+            return []
+        
+        
+        polygon = []
+        
+        
+        first_circle = []
+        for i in range(16):
+            angle = 2 * math.pi * i / 16
+            x = curve_points[0][0] + r * math.cos(angle)
+            y = curve_points[0][1] + r * math.sin(angle)
+            first_circle.append((x, y))
+        
+        
+        right_side = []
+        for i in range(len(curve_points) - 1):
+            p1 = curve_points[i]
+            p2 = curve_points[i + 1]
+            
+            
             dx = p2[0] - p1[0]
             dy = p2[1] - p1[1]
             length = math.sqrt(dx*dx + dy*dy)
+            
             if length > 0:
-                nx = -dy / length
-                ny = dx / length
                 
-                # Add points on both sides of the path
-                left_boundary.append((p1[0] + r*nx, p1[1] + r*ny))
-                right_boundary.append((p1[0] - r*nx, p1[1] - r*ny))
+                perpx = -dy / length
+                perpy = dx / length
+                
+                
+                right_side.append((p1[0] + r * perpx, p1[1] + r * perpy))
         
-        # Add the last point
-        if len(path_points) >= 2:
-            p1 = path_points[-2]
-            p2 = path_points[-1]
+        
+        if len(curve_points) >= 2:
+            p1 = curve_points[-2]
+            p2 = curve_points[-1]
             dx = p2[0] - p1[0]
             dy = p2[1] - p1[1]
             length = math.sqrt(dx*dx + dy*dy)
+            
             if length > 0:
-                nx = -dy / length
-                ny = dx / length
-                left_boundary.append((p2[0] + r*nx, p2[1] + r*ny))
-                right_boundary.append((p2[0] - r*nx, p2[1] - r*ny))
+                perpx = -dy / length
+                perpy = dx / length
+                right_side.append((p2[0] + r * perpx, p2[1] + r * perpy))
         
-        # Combine boundaries to form a closed polygon
-        polygon = left_boundary + list(reversed(right_boundary))
+        
+        last_circle = []
+        for i in range(16):
+            angle = 2 * math.pi * i / 16 + math.pi
+            x = curve_points[-1][0] + r * math.cos(angle)
+            y = curve_points[-1][1] + r * math.sin(angle)
+            last_circle.append((x, y))
+        
+        
+        left_side = []
+        for i in range(len(curve_points) - 1, 0, -1):
+            p1 = curve_points[i]
+            p2 = curve_points[i - 1]
+            
+            
+            dx = p1[0] - p2[0]
+            dy = p1[1] - p2[1]
+            length = math.sqrt(dx*dx + dy*dy)
+            
+            if length > 0:
+                
+                perpx = -dy / length
+                perpy = dx / length
+                
+                
+                left_side.append((p1[0] + r * perpx, p1[1] + r * perpy))
+        
+        
+        if len(curve_points) >= 2:
+            p1 = curve_points[1]
+            p2 = curve_points[0]
+            dx = p2[0] - p1[0]
+            dy = p2[1] - p1[1]
+            length = math.sqrt(dx*dx + dy*dy)
+            
+            if length > 0:
+                perpx = -dy / length
+                perpy = dx / length
+                left_side.append((p2[0] + r * perpx, p2[1] + r * perpy))
+        
+        
+        
+        polygon = right_side + last_circle + left_side + first_circle
         
         return polygon
-    
+
     def get_segmentation_mask(self, width, height, r):
-        """
-        Creates a binary mask for the slider using Bezier curve sampling
-        
-        Args:
-            width (int): Width of the mask
-            height (int): Height of the mask
-            r (float): Radius of the slider path
-            
-        Returns:
-            np.ndarray: Binary mask where 1 indicates the slider
-        """
+
         mask = np.zeros((height, width), dtype=np.uint8)
         
-        # Sample points along the Bezier curve
+        
         curve_points = []
-        if hasattr(self, 'curve') and hasattr(self.curve, 'at'):
-            for t in np.arange(0, 1.01, 0.01):  # Sample 100 points
-                point = self.curve.at(t)
-                curve_points.append((point[0], point[1]))
-        else:
-            # Fallback if curve isn't available
-            curve_points = [(self.x, self.y)] + self.curve_points
+        num_samples = max(int(self.curve.pxlength / r) * 2, 50)  
+        step = 1.0 / num_samples
         
-        # Define tight bounds to avoid checking every pixel
-        min_x = max(0, int(min(p[0] for p in curve_points) - r))
-        max_x = min(width, int(max(p[0] for p in curve_points) + r + 1))
-        min_y = max(0, int(min(p[1] for p in curve_points) - r))
-        max_y = min(height, int(max(p[1] for p in curve_points) + r + 1))
+        for i in range(num_samples + 1):
+            t = i * step
+            distance = t * self.curve.pxlength
+            point = self.curve.point_at_distance(distance)
+            if point:
+                curve_points.append(point)
         
-        # For each pixel in bounds, check if it's within radius of any curve point
-        for y in range(min_y, max_y):
-            for x in range(min_x, max_x):
-                # Check if this pixel is within radius of any curve point
-                for cx, cy in curve_points:
-                    if (x - cx)**2 + (y - cy)**2 <= r**2:
+        
+        for point in curve_points:
+            center_x, center_y = round(point[0]), round(point[1])
+            
+            
+            x_min = max(0, round(center_x - r))
+            x_max = min(width, round(center_x + r + 1))
+            y_min = max(0, round(center_y - r))
+            y_max = min(height, round(center_y + r + 1))
+            
+            
+            for y in range(y_min, y_max):
+                for x in range(x_min, x_max):
+                    
+                    if (x - center_x) ** 2 + (y - center_y) ** 2 <= r ** 2:
                         mask[y, x] = 1
-                        break
         
         return mask
