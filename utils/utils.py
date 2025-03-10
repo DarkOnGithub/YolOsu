@@ -1,18 +1,30 @@
+import re
+
 def nth_bit_set(n, i):
     return (n & (1 << i)) != 0
 
-def osu_to_screen(osu_x, osu_y, screen_width = 1920, screen_height = 1080):
+def osu_pixels_to_normal_coords(osu_x, osu_y, resolution_width, resolution_height):
 
-    OSU_PLAYFIELD_WIDTH = 512
-    OSU_PLAYFIELD_HEIGHT = 384
+    playfield_height = 0.8 * resolution_height
+    playfield_width = (4/3) * playfield_height
 
-    scaling_factor = screen_height / OSU_PLAYFIELD_HEIGHT
+    playfield_left = (resolution_width - playfield_width) / 2
+    playfield_top = (resolution_height - playfield_height) / 2 + (0.02 * playfield_height)
 
-    scaled_playfield_width = OSU_PLAYFIELD_WIDTH * scaling_factor
+    osu_scale = playfield_height / 384 
 
-    horizontal_offset = (screen_width - scaled_playfield_width) / 2
+    mapped_x = (osu_x * osu_scale) + playfield_left
+    mapped_y = (osu_y * osu_scale) + playfield_top
 
-    screen_x = osu_x * scaling_factor + horizontal_offset
-    screen_y = osu_y * scaling_factor  
+    return mapped_x, mapped_y
 
-    return (screen_x, screen_y)
+def get_difficulty(name):
+    match = re.search(r"\[(.*?)\]", name)
+
+    if match:
+        group_in_brackets = match.group(1)
+        words = group_in_brackets.split()
+        difficulty = words[-1]
+        return difficulty
+    else:
+        return None

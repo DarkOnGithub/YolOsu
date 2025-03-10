@@ -31,7 +31,6 @@ def cart_from_pol(r, teta):
 
 
 def point_at_distance(array, distance):
-    # needs a serious cleanup !
     global new_distance, i
     current_distance = 0
 
