@@ -53,11 +53,8 @@ def generate_masks_from_beatmap(osz_path, output_dir="beatmap_masks", radius=10)
         print(f"  Completed {len(difficulty.hit_objects)} objects for difficulty {diff_name}")
     
     print(f"All masks saved to {output_dir} directory")
-
 def overlay_objects_on_video(osz_path, difficulty, output_path="output_video.mp4"):
-
     width, height = 192, 144
-    
     
     print(f"Parsing beatmap: {osz_path}")
     beatmap = parse_osz_file(osz_path)
@@ -83,6 +80,7 @@ def overlay_objects_on_video(osz_path, difficulty, output_path="output_video.mp4
     if not difficulty:
         print(f"Error: Difficulty {difficulty} not found in beatmap")
         return
+    
     print(f"Processing difficulty: {diff_name} for video overlay")
     
     ar = difficulty.difficulty.get("ar", 5)
@@ -102,6 +100,16 @@ def overlay_objects_on_video(osz_path, difficulty, output_path="output_video.mp4
     
     offset_ms = -hit_objects[0].time + (99 / 60) * 1000
 
+    
+    colors = {
+        'hitcircle': (255, 0, 0),     
+        'bezier': (0, 0, 255),        
+        'catmull': (0, 255, 0),       
+        'linear': (0, 255, 255),      
+        'passthrough': (255, 0, 255)  
+    }
+    
+    
     while cap.isOpened():
         ret, frame = cap.read()
         if not ret:
@@ -109,7 +117,15 @@ def overlay_objects_on_video(osz_path, difficulty, output_path="output_video.mp4
         
         current_time_ms = frame_index * ms_per_frame - offset_ms
         
-        frame_mask = np.zeros((height, width), dtype=np.uint8)
+        
+        masks = {
+            'hitcircle': np.zeros((height, width), dtype=np.uint8),
+            'bezier': np.zeros((height, width), dtype=np.uint8),
+            'catmull': np.zeros((height, width), dtype=np.uint8),
+            'linear': np.zeros((height, width), dtype=np.uint8),
+            'passthrough': np.zeros((height, width), dtype=np.uint8)
+        }
+        
         
         while current_obj_index < len(hit_objects) and hit_objects[current_obj_index].time < current_time_ms:
             current_obj_index += 1
@@ -124,23 +140,63 @@ def overlay_objects_on_video(osz_path, difficulty, output_path="output_video.mp4
                 break
                 
             if current_time_ms <= hit_time:
-                obj_mask = np.zeros((height, width), dtype=np.uint8)
                 base_mask = obj.get_segmentation_mask(width, height, object_radius)
-                obj_mask = np.maximum(obj_mask, base_mask)
                 
-                approach_circle = ApproachCircle((obj.x, obj.y), obj.time, object_radius, approach_time_ms)
+                
+                if isinstance(obj, HitCircle):
+                    mask_type = 'hitcircle'
+                elif isinstance(obj, Slider):
+                    
+                    if obj.curve_type == "b":
+                        mask_type = 'bezier'
+                    elif obj.curve_type == "c":
+                        mask_type = 'catmull'
+                    elif obj.curve_type == "l":
+                        mask_type = 'linear'
+                    elif obj.curve_type == "p":
+                        mask_type = 'passthrough'
+                    else:
+                        mask_type = 'bezier'  
+                else:
+                    mask_type = 'hitcircle'  
+                
+                
+                masks[mask_type] = np.maximum(masks[mask_type], base_mask)
+                
+                
+                approach_circle = ApproachCircle((obj.x, obj.y), obj.time, object_radius, ar)
                 approach_mask = approach_circle.get_segmentation_mask(width, height, current_time_ms)
                 
-                obj_mask = np.maximum(obj_mask, approach_mask)
-                frame_mask = np.maximum(frame_mask, obj_mask)
+                
+                masks[mask_type] = np.maximum(masks[mask_type], approach_mask)
             
             obj_index += 1
 
-        if np.any(frame_mask):
-            frame_mask = cv2.resize(frame_mask, (video_width, video_height))
+        
+        any_objects = any(np.any(mask) for mask in masks.values())
+        
+        if any_objects:
             
             colored_mask = np.zeros((video_height, video_width, 3), dtype=np.uint8)
-            colored_mask[frame_mask > 0] = [0, 0, 255] 
+            
+            
+            for mask_type, mask in masks.items():
+                if np.any(mask):
+                    resized_mask = cv2.resize(mask, (video_width, video_height))
+                    color = colors[mask_type]
+                    colored_mask[resized_mask > 0] = color
+            
+            
+            cv2.putText(frame, f"Frame: {frame_index} Time: {current_time_ms:.0f}ms", 
+                     (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+            
+            
+            y_pos = 40
+            for obj_type, color in colors.items():
+                cv2.putText(frame, obj_type, (10, y_pos), 
+                         cv2.FONT_HERSHEY_SIMPLEX, 0.4, color, 1)
+                y_pos += 20
+            
             
             alpha = 0.5
             frame = cv2.addWeighted(frame, 1, colored_mask, alpha, 0)
@@ -151,15 +207,13 @@ def overlay_objects_on_video(osz_path, difficulty, output_path="output_video.mp4
         if frame_index % 100 == 0:
             print(f"  Processed {frame_index}/{frame_count} frames...")
     
-    cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
-
     cap.release()
     out.release()
     print(f"Video processing complete: {output_path}")
-
+    
 if __name__ == "__main__":
     overlay_objects_on_video(
-        "maps/320118 Reol - No title.osz",
-        "jieusieu's Lemur", 
+        "1001507 ZUTOMAYO - Kan Saete Kuyashiiwa",
+        "geragera", 
         "output_with_objects.mp4"
     )

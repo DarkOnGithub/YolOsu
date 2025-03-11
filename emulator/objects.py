@@ -28,36 +28,17 @@ class HitObject:
 class HitCircle(HitObject):
     def __init__(self, x, y, time, resolution_width=192, resolution_height=144):
         super().__init__(x, y, time, resolution_width, resolution_height)
-        
-    def get_bounding_box(self, r):
-        top_left = (self.x - r, self.y - r)
-        top_right = (self.x + r, self.y - r)
-        bottom_right = (self.x + r, self.y + r)
-        bottom_left = (self.x - r, self.y + r)
-        
-        return (top_left, top_right, bottom_right, bottom_left)
-    
-    def get_segmentation_polygon(self, r, num_points=32):
-        polygon = []
-        for i in range(num_points):
-            angle = 2 * math.pi * i / num_points
-            x = self.x + r * math.cos(angle)
-            y = self.y + r * math.sin(angle)
-            polygon.append((x, y))
-        
-        return polygon
     
     def get_segmentation_mask(self, width, height, r):
         mask = np.zeros((height, width), dtype=np.uint8)
         
-        y_coords, x_coords = np.ogrid[:height, :width]
+        center_x, center_y = int(round(self.x)), int(round(self.y))
+        radius = int(r)
         
-        dist = np.sqrt((x_coords - self.x) ** 2 + (y_coords - self.y) ** 2)
-        
-        mask[dist <= r] = 1
+        cv2.circle(mask, (center_x, center_y), radius, 1, -1)
         
         return mask
-          
+            
     
 class Slider(HitObject):
     def __init__(self, x, y, time, curve_type, curve_points, length, resolution_width=192, resolution_height=144):
@@ -88,142 +69,30 @@ class Slider(HitObject):
         else:
             self.curve = curve.Bezier(curve_points_with_start)
             
-    def get_segmentation_polygon(self, r, num_samples=50):
+    def get_segmentation_mask(self, width, height, r):
 
+        mask = np.zeros((height, width), dtype=np.uint8)
         
         curve_points = []
+        num_samples = max(int(self.curve.pxlength / r) * 2, 10)
         step = 1.0 / num_samples
         
-        for i in range(num_samples + 1):
+        for i in range(num_samples):
             t = i * step
             distance = t * self.curve.pxlength
             point = self.curve.point_at_distance(distance)
             if point:
-                curve_points.append(point)
+                curve_points.append((int(round(point[0])), int(round(point[1]))))
         
-        if len(curve_points) < 2:
-            return []
+        end_point = self.curve.point_at_distance(self.curve.pxlength)
+        if end_point:
+            curve_points.append((int(round(end_point[0])), int(round(end_point[1]))))
         
+        radius = int(r)
+        for center_x, center_y in curve_points:
+            cv2.circle(mask, (center_x, center_y), radius, 1, -1)
         
-        polygon = []
-        
-        
-        first_circle = []
-        for i in range(16):
-            angle = 2 * math.pi * i / 16
-            x = curve_points[0][0] + r * math.cos(angle)
-            y = curve_points[0][1] + r * math.sin(angle)
-            first_circle.append((x, y))
-        
-        
-        right_side = []
-        for i in range(len(curve_points) - 1):
-            p1 = curve_points[i]
-            p2 = curve_points[i + 1]
-            
-            
-            dx = p2[0] - p1[0]
-            dy = p2[1] - p1[1]
-            length = math.sqrt(dx*dx + dy*dy)
-            
-            if length > 0:
-                
-                perpx = -dy / length
-                perpy = dx / length
-                
-                
-                right_side.append((p1[0] + r * perpx, p1[1] + r * perpy))
-        
-        
-        if len(curve_points) >= 2:
-            p1 = curve_points[-2]
-            p2 = curve_points[-1]
-            dx = p2[0] - p1[0]
-            dy = p2[1] - p1[1]
-            length = math.sqrt(dx*dx + dy*dy)
-            
-            if length > 0:
-                perpx = -dy / length
-                perpy = dx / length
-                right_side.append((p2[0] + r * perpx, p2[1] + r * perpy))
-        
-        
-        last_circle = []
-        for i in range(16):
-            angle = 2 * math.pi * i / 16 + math.pi
-            x = curve_points[-1][0] + r * math.cos(angle)
-            y = curve_points[-1][1] + r * math.sin(angle)
-            last_circle.append((x, y))
-        
-        
-        left_side = []
-        for i in range(len(curve_points) - 1, 0, -1):
-            p1 = curve_points[i]
-            p2 = curve_points[i - 1]
-            
-            
-            dx = p1[0] - p2[0]
-            dy = p1[1] - p2[1]
-            length = math.sqrt(dx*dx + dy*dy)
-            
-            if length > 0:
-                
-                perpx = -dy / length
-                perpy = dx / length
-                
-                
-                left_side.append((p1[0] + r * perpx, p1[1] + r * perpy))
-        
-        
-        if len(curve_points) >= 2:
-            p1 = curve_points[1]
-            p2 = curve_points[0]
-            dx = p2[0] - p1[0]
-            dy = p2[1] - p1[1]
-            length = math.sqrt(dx*dx + dy*dy)
-            
-            if length > 0:
-                perpx = -dy / length
-                perpy = dx / length
-                left_side.append((p2[0] + r * perpx, p2[1] + r * perpy))
-        
-        
-        
-        polygon = right_side + last_circle + left_side + first_circle
-        
-        return polygon
-    def get_segmentation_mask(self, width, height, r):
-            mask = np.zeros((height, width), dtype=np.uint8)
-            
-            curve_points = []
-            num_samples = max(int(self.curve.pxlength / r) * 2, 25)  
-            step = 1.0 / num_samples
-            
-            for i in range(num_samples):  
-                t = i * step
-                distance = t * self.curve.pxlength
-                point = self.curve.point_at_distance(distance)
-                if point:
-                    curve_points.append(point)
-            
-            end_point = self.curve.point_at_distance(self.curve.pxlength)
-            if end_point:
-                curve_points.append(end_point)
-            
-            for point in curve_points:
-                center_x, center_y = round(point[0]), round(point[1])
-                
-                x_min = max(0, round(center_x - r))
-                x_max = min(width, round(center_x + r + 1))
-                y_min = max(0, round(center_y - r))
-                y_max = min(height, round(center_y + r + 1))
-                
-                for y in range(y_min, y_max):
-                    for x in range(x_min, x_max):
-                        if (x - center_x) ** 2 + (y - center_y) ** 2 <= r ** 2:
-                            mask[y, x] = 1
-            
-            return mask
+        return mask
 
 import numpy as np
 import cv2
@@ -239,33 +108,56 @@ def calc_fade_out(time, t1, t2, limit=1):
     
     return limit * (-1 / (t2 - t1)) * (time - t2)
 
-
-
 class ApproachCircle:
-    def __init__(self, center, startTime, radius=10, approachRate=1000):
+    def __init__(self, center, startTime, radius=10, approach_rate=5):
         self.center = center
         self.startTime = startTime
         self.radius = radius
-        self.approachRate = approachRate
+        self.approach_rate = approach_rate
         
-        self.appear = startTime - approachRate
+        if approach_rate < 5:
+            self.preempt = 1200 + 600 * (5 - approach_rate) / 5
+        elif approach_rate == 5:
+            self.preempt = 1200
+        else: 
+            self.preempt = 1200 - 750 * (approach_rate - 5) / 5
+        
+        if approach_rate < 5:
+            self.fadeInTime = 800 + 400 * (5 - approach_rate) / 5
+        elif approach_rate == 5:
+            self.fadeInTime = 800
+        else: 
+            self.fadeInTime = 800 - 500 * (approach_rate - 5) / 5
+            
+        self.appear = startTime - self.preempt
 
     def get_segmentation_mask(self, width, height, time, thickness=2):
         mask = np.zeros((height, width), dtype=np.uint8)
-        if not (self.appear <= time <= self.startTime):
+        
+        if time < self.appear or time > self.startTime:
             return mask
-
-        opacity = calc_fade_in(time, self.appear, self.startTime, limit=0.5)
+        
+        fadeInEnd = self.appear + self.fadeInTime
+        
+        if time < fadeInEnd:
+            opacity = calc_fade_in(time, self.appear, fadeInEnd, limit=0.9)
+        else:
+            opacity = 0.9
+        
+        if self.startTime - time <= 10:
+            opacity = opacity * (self.startTime - time) / 10
+        
+        
         if opacity < 0.05:
-            return mask  
-
+            return mask
         
         
-        progress = (self.startTime - time) / (self.startTime - self.appear)
-        current_radius = int(self.radius + 3 * progress * self.radius)
-
+        progress = (time - self.appear) / self.preempt
+        scale = 4.0 - 3.0 * progress  
+        current_radius = round(self.radius * scale)
         
         
-        cv2.circle(mask, (int(self.center[0]), int(self.center[1])), current_radius, 1, thickness)
+        cv2.circle(mask, (round(self.center[0]), round(self.center[1])),
+                  current_radius, round(opacity * 255), thickness)
+        
         return mask
-

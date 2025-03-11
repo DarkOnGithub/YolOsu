@@ -5,25 +5,42 @@ from emulator import Beatmap
 import utils.utils as utils
 import re
 import os
-
 def extract_osu_file(osz_path: str) -> Dict[str, str]:
-
     difficulties = {}
+    
+    base_name = os.path.basename(osz_path).split('.')[0]
+    extract_dir = os.path.join(os.path.dirname(osz_path), base_name)
+    
     try:
-        with zipfile.ZipFile(osz_path, "r") as z:
-            
-            osu_files = (f for f in z.namelist() if f.lower().endswith(".osu"))
-            for file in osu_files:
-                with z.open(file) as f:
+        if not os.path.exists(extract_dir):
+            os.makedirs(extract_dir)
+            with zipfile.ZipFile(osz_path, "r") as z:
+                z.extractall(extract_dir)
+        
+        for root, _, files in os.walk(extract_dir):
+            for file in files:
+                if file.lower().endswith(".osu"):
+                    file_path = os.path.join(root, file)
+                    
+                    
                     difficulty = utils.get_difficulty(file)
                     if difficulty is None:
                         print(f"Could not find difficulty for {file}")
                         continue
                     
-                    content = f.read().decode('utf-8-sig', errors='replace')
-                    difficulties[difficulty] = content
+                    
+                    with open(file_path, 'r', encoding='utf-8-sig', errors='replace') as f:
+                        content = f.read()
+                        difficulties[difficulty] = content
+        
+        if not difficulties:
+            print(f"No .osu files found in extracted directory: {extract_dir}")
+            
     except zipfile.BadZipFile:
         print(f"Error: Invalid .osz file at {osz_path}")
+    except Exception as e:
+        print(f"Error extracting/reading files: {e}")
+        
     return difficulties
 
 def parse_osu_file(osu_content: str) -> Optional[Dict[str, List[str]]]:
@@ -86,6 +103,7 @@ def parse_difficulty(sections: Dict[str, List[str]]) -> Optional[List[float]]:
             for match in pattern.finditer("\n".join(difficulty_section))]
 
 def parse_osz_file(osz_path: str) -> Beatmap.Beatmap:
+    osz_path = "maps/" + osz_path + ".osz"
     filename = os.path.basename(osz_path) 
     match = re.match(r"(\d+)\s+(.+?)\.osz$", filename)
         

@@ -50,17 +50,17 @@ class Difficulty:
         print(f"Running command: {command}")
         
         if os.system(command) == 0:
-            os.makedirs(os.path.dirname(out_folder), exist_ok=True)
-            
+            os.makedirs((out_folder), exist_ok=True)
             source_file = os.path.join(danser_path, "videos", file_name + ".mp4")
             
             try:
+                print(f"Moving file to {out_path}")
                 shutil.move(source_file, out_path)
                 return out_path
             except Exception as e:
                 print(f"Error moving file: {e}")
                 if os.path.exists(source_file):
-                    return source_file
+                    return out_path
         
         return None
     

@@ -1,6 +1,6 @@
 {
 	"General": {
-		"OsuSongsDir": "C:\\Users\\darke\\AppData\\Local\\osu!\\Songs",
+		"OsuSongsDir": "..\\maps",
 		"OsuSkinsDir": "C:\\Users\\darke\\AppData\\Local\\osu!\\Skins",
 		"OsuReplaysDir": "C:\\Users\\darke\\AppData\\Local\\osu!\\Replays",
 		"DiscordPresenceOn": true,
