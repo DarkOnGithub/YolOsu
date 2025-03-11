@@ -1,0 +1,98 @@
+2025/03/11 11:50:16 -------------------------------------------------------------------
+2025/03/11 11:50:16 danser-go version: 0.10.2
+2025/03/11 11:50:16 Build commit hash: 491ee29b6a336ddfa8b85bba6db1baf330c2ba24
+2025/03/11 11:50:16 Ran using: [C:\Users\darke\OneDrive\Documents\YolOsu\danser\danser-cli.exe -t=No title -d=jieusieu's Lemur -out=No title-jieusieu's Lemur -record -quickstart]
+2025/03/11 11:50:16 OS:  Microsoft Windows 11 Home 10.0.22631.4890 Build 22631.4890
+2025/03/11 11:50:16 CPU: 11th Gen Intel(R) Core(TM) i3-1115G4 @ 3.00GHz, 4 cores
+2025/03/11 11:50:16 RAM: 7.7 GiB
+2025/03/11 11:50:16 -------------------------------------------------------------------
+2025/03/11 11:50:16 Checking Github for a new version of danser...
+2025/03/11 11:50:16 You're using the newest version of danser.
+2025/03/11 11:50:16 SettingsManager: Loading "C:\Users\darke\OneDrive\Documents\YolOsu\danser\settings\default.json"
+2025/03/11 11:50:16 SettingsManager: "C:\Users\darke\OneDrive\Documents\YolOsu\danser\settings\default.json" loaded!
+2025/03/11 11:50:16 ApiConnector: Loading "C:\Users\darke\OneDrive\Documents\YolOsu\danser\settings\credentials.json"
+2025/03/11 11:50:17 Current config: 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
+2025/03/11 11:50:17 DatabaseManager: Initializing database...
+2025/03/11 11:50:17 DatabaseManager: Database schema version: 20220622
+2025/03/11 11:50:17 DatabaseManager: Database data version: 20220622
+2025/03/11 11:50:17 DatabaseManager: Scanning "C:\Users\darke\AppData\Local\osu!\Songs" for .osu files...
+2025/03/11 11:50:17 DatabaseManager: Scan complete. Found 98 files.
+2025/03/11 11:50:17 DatabaseManager: Comparing files with database...
+2025/03/11 11:50:17 DatabaseManager: Compare complete.
+2025/03/11 11:50:17 DatabaseManager: Loading beatmaps from database...
+2025/03/11 11:50:17 DatabaseManager: Loaded 60 total.
+2025/03/11 11:50:17 Initializing GLFW...
+2025/03/11 11:50:17 GLFW Initialized!
+2025/03/11 11:50:17 Creating window...
+2025/03/11 11:50:17 Window created!
+2025/03/11 11:50:17 Initializing OpenGL...
+2025/03/11 11:50:17 GL Vendor:     Intel
+2025/03/11 11:50:17 GL Renderer:   Intel(R) UHD Graphics
+2025/03/11 11:50:17 GL Version:    3.3.0 - Build 31.0.101.4255
+2025/03/11 11:50:17 GLSL Version:  3.30 - Build 31.0.101.4255
+2025/03/11 11:50:17 GL Extensions: GL_3DFX_texture_compression_FXT1 GL_AMD_depth_clamp_separate GL_AMD_vertex_shader_layer GL_AMD_vertex_shader_viewport_index GL_ARB_ES2_compatibility GL_ARB_ES3_1_compatibility GL_ARB_ES3_compatibility GL_ARB_arrays_of_arrays GL_ARB_base_instance GL_ARB_bindless_texture GL_ARB_blend_func_extended GL_ARB_buffer_storage GL_ARB_cl_event GL_ARB_clear_buffer_object GL_ARB_clear_texture GL_ARB_clip_control GL_ARB_color_buffer_float GL_ARB_compressed_texture_pixel_storage GL_ARB_compute_shader GL_ARB_conditional_render_inverted GL_ARB_conservative_depth GL_ARB_copy_buffer GL_ARB_copy_image GL_ARB_cull_distance GL_ARB_debug_output GL_ARB_depth_buffer_float GL_ARB_depth_clamp GL_ARB_depth_texture GL_ARB_derivative_control GL_ARB_direct_state_access GL_ARB_draw_buffers GL_ARB_draw_buffers_blend GL_ARB_draw_elements_base_vertex GL_ARB_draw_indirect GL_ARB_draw_instanced GL_ARB_enhanced_layouts GL_ARB_explicit_attrib_location GL_ARB_explicit_uniform_location GL_ARB_fragment_coord_conventions GL_ARB_fragment_layer_viewport GL_ARB_fragment_program GL_ARB_fragment_program_shadow GL_ARB_fragment_shader GL_ARB_fragment_shader_interlock GL_ARB_framebuffer_no_attachments GL_ARB_framebuffer_object GL_ARB_framebuffer_sRGB GL_ARB_geometry_shader4 GL_ARB_get_program_binary GL_ARB_get_texture_sub_image GL_ARB_gl_spirv GL_ARB_gpu_shader5 GL_ARB_gpu_shader_fp64 GL_ARB_half_float_pixel GL_ARB_half_float_vertex GL_ARB_indirect_parameters GL_ARB_instanced_arrays GL_ARB_internalformat_query GL_ARB_internalformat_query2 GL_ARB_invalidate_subdata GL_ARB_map_buffer_alignment GL_ARB_map_buffer_range GL_ARB_multi_bind GL_ARB_multi_draw_indirect GL_ARB_multisample GL_ARB_multitexture GL_ARB_occlusion_query GL_ARB_occlusion_query2 GL_ARB_pipeline_statistics_query GL_ARB_pixel_buffer_object GL_ARB_point_parameters GL_ARB_point_sprite GL_ARB_polygon_offset_clamp GL_ARB_post_depth_coverage GL_ARB_program_interface_query GL_ARB_provoking_vertex GL_ARB_query_buffer_object GL_ARB_robust_buffer_access_behavior GL_ARB_robustness GL_ARB_robustness_isolation GL_ARB_sample_shading GL_ARB_sampler_objects GL_ARB_seamless_cube_map GL_ARB_seamless_cubemap_per_texture GL_ARB_separate_shader_objects GL_ARB_shader_atomic_counter_ops GL_ARB_shader_atomic_counters GL_ARB_shader_bit_encoding GL_ARB_shader_draw_parameters GL_ARB_shader_group_vote GL_ARB_shader_image_load_store GL_ARB_shader_image_size GL_ARB_shader_objects GL_ARB_shader_precision GL_ARB_shader_stencil_export GL_ARB_shader_storage_buffer_object GL_ARB_shader_subroutine GL_ARB_shader_texture_image_samples GL_ARB_shading_language_100 GL_ARB_shading_language_420pack GL_ARB_shading_language_packing GL_ARB_shadow GL_ARB_spirv_extensions GL_ARB_stencil_texturing GL_ARB_sync GL_ARB_tessellation_shader GL_ARB_texture_barrier GL_ARB_texture_border_clamp GL_ARB_texture_buffer_object GL_ARB_texture_buffer_object_rgb32 GL_ARB_texture_buffer_range GL_ARB_texture_compression GL_ARB_texture_compression_bptc GL_ARB_texture_compression_rgtc GL_ARB_texture_cube_map GL_ARB_texture_cube_map_array GL_ARB_texture_env_add GL_ARB_texture_env_combine GL_ARB_texture_env_crossbar GL_ARB_texture_env_dot3 GL_ARB_texture_filter_anisotropic GL_ARB_texture_float GL_ARB_texture_gather GL_ARB_texture_mirror_clamp_to_edge GL_ARB_texture_mirrored_repeat GL_ARB_texture_multisample GL_ARB_texture_non_power_of_two GL_ARB_texture_query_levels GL_ARB_texture_query_lod GL_ARB_texture_rectangle GL_ARB_texture_rg GL_ARB_texture_rgb10_a2ui GL_ARB_texture_stencil8 GL_ARB_texture_storage GL_ARB_texture_storage_multisample GL_ARB_texture_swizzle GL_ARB_texture_view GL_ARB_timer_query GL_ARB_transform_feedback2 GL_ARB_transform_feedback3 GL_ARB_transform_feedback_instanced GL_ARB_transform_feedback_overflow_query GL_ARB_transpose_matrix GL_ARB_uniform_buffer_object GL_ARB_vertex_array_bgra GL_ARB_vertex_array_object GL_ARB_vertex_attrib_64bit GL_ARB_vertex_attrib_binding GL_ARB_vertex_buffer_object GL_ARB_vertex_program GL_ARB_vertex_shader GL_ARB_vertex_type_10f_11f_11f_rev GL_ARB_vertex_type_2_10_10_10_rev GL_ARB_viewport_array GL_ARB_window_pos GL_ATI_separate_stencil GL_EXT_abgr GL_EXT_bgra GL_EXT_blend_color GL_EXT_blend_equation_separate GL_EXT_blend_func_separate GL_EXT_blend_minmax GL_EXT_blend_subtract GL_EXT_clip_volume_hint GL_EXT_compiled_vertex_array GL_EXT_depth_bounds_test GL_EXT_direct_state_access GL_EXT_draw_buffers2 GL_EXT_draw_range_elements GL_EXT_fog_coord GL_EXT_framebuffer_blit GL_EXT_framebuffer_multisample GL_EXT_framebuffer_object GL_EXT_geometry_shader4 GL_EXT_gpu_program_parameters GL_EXT_gpu_shader4 GL_EXT_memory_object GL_EXT_memory_object_win32 GL_EXT_multi_draw_arrays GL_EXT_packed_depth_stencil GL_EXT_packed_float GL_EXT_packed_pixels GL_EXT_polygon_offset_clamp GL_EXT_rescale_normal GL_EXT_secondary_color GL_EXT_semaphore GL_EXT_semaphore_win32 GL_EXT_separate_specular_color GL_EXT_shader_framebuffer_fetch GL_EXT_shader_integer_mix GL_EXT_shadow_funcs GL_EXT_stencil_two_side GL_EXT_stencil_wrap GL_EXT_texture3D GL_EXT_texture_array GL_EXT_texture_compression_s3tc GL_EXT_texture_edge_clamp GL_EXT_texture_env_add GL_EXT_texture_env_combine GL_EXT_texture_filter_anisotropic GL_EXT_texture_integer GL_EXT_texture_lod_bias GL_EXT_texture_rectangle GL_EXT_texture_sRGB GL_EXT_texture_sRGB_decode GL_EXT_texture_shared_exponent GL_EXT_texture_snorm GL_EXT_texture_storage GL_EXT_texture_swizzle GL_EXT_timer_query GL_EXT_transform_feedback GL_IBM_texture_mirrored_repeat GL_INTEL_conservative_rasterization GL_INTEL_fragment_shader_ordering GL_INTEL_framebuffer_CMAA GL_INTEL_map_texture GL_INTEL_multi_rate_fragment_shader GL_INTEL_performance_query GL_KHR_blend_equation_advanced GL_KHR_blend_equation_advanced_coherent GL_KHR_context_flush_control GL_KHR_debug GL_KHR_no_error GL_KHR_shader_subgroup GL_KHR_shader_subgroup_arithmetic GL_KHR_shader_subgroup_ballot GL_KHR_shader_subgroup_basic GL_KHR_shader_subgroup_clustered GL_KHR_shader_subgroup_quad GL_KHR_shader_subgroup_shuffle GL_KHR_shader_subgroup_shuffle_relative GL_KHR_shader_subgroup_vote GL_KHR_texture_compression_astc_ldr GL_NV_blend_square GL_NV_conditional_render GL_NV_primitive_restart GL_NV_texgen_reflection GL_OVR_multiview GL_SGIS_generate_mipmap GL_SGIS_texture_edge_clamp GL_SGIS_texture_lod GL_SUN_multi_draw_arrays GL_WIN_swap_hint WGL_EXT_swap_control 
+2025/03/11 11:50:17 OpenGL initialized!
+2025/03/11 11:50:17 Quicksand Bold loaded!
+2025/03/11 11:50:17 Initializing BASS...
+2025/03/11 11:50:17 BASS Initialized!
+2025/03/11 11:50:17 BASS Version:        2.4.16.1
+2025/03/11 11:50:17 BASS FX Version:     2.4.12.1
+2025/03/11 11:50:17 BASS Mix Version:    2.4.10.0
+2025/03/11 11:50:17 SkinManager: Skin "default" loaded.
+2025/03/11 11:50:17 Loading texture into atlas: assets/textures/cursor.png
+2025/03/11 11:50:17 Loading texture into atlas: assets/textures/cursor-top.png
+2025/03/11 11:50:17 Loading texture into atlas: assets/default-skin/hit50.png
+2025/03/11 11:50:17 Loading texture into atlas: assets/default-skin/hit100.png
+2025/03/11 11:50:17 Loading texture into atlas: assets/textures/triangle.png
+2025/03/11 11:50:17 Loading texture into atlas: assets/textures/triangle-shadow.png
+2025/03/11 11:50:17 Loading texture into atlas: assets/textures/triangle-small.png
+2025/03/11 11:50:17 Loading texture into atlas: assets/textures/cross.png
+2025/03/11 11:50:17 Loading texture: assets/textures/cursortrail.png
+2025/03/11 11:50:17 Playing: Reol - No title [jieusieu's Lemur]
+2025/03/11 11:50:17 Audio track: No title.mp3
+2025/03/11 11:50:17 Loading texture into atlas: assets/textures/warning.png
+2025/03/11 11:50:18 Trying to load storyboard from:  C:\Users\darke\AppData\Local\osu!\Songs\320118 Reol - No title\Reol - No title (VINXIS) [jieusieu's Lemur].osu
+2025/03/11 11:50:18 Storyboard loaded
+2025/03/11 11:50:18 Creating HitObject container...
+2025/03/11 11:50:18 Container created.
+2025/03/11 11:50:18 SkinManager: Texture uploaded as single texture: cursor-ripple.png
+2025/03/11 11:50:18 FFmpeg exec location: C:\Users\darke\OneDrive\Documents\YolOsu\danser\ffmpeg\ffmpeg.exe
+2025/03/11 11:50:18 Starting encoding!
+2025/03/11 11:50:18 Running ffmpeg with options: [-y -f rawvideo -vcodec rawvideo -s 192x144 -pix_fmt yuv420p -r 60 -i - -an -vf vflip -c:v libx264 -color_range 1 -colorspace 1 -color_trc 1 -color_primaries 1 -movflags +write_colr -crf 14 -profile high -preset faster C:\Users\darke\OneDrive\Documents\YolOsu\danser\videos\No title-jieusieu's Lemur_temp\video.mp4]
+2025/03/11 11:50:18 Running ffmpeg with options: [-y -f f32le -acodec pcm_f32le -ar 48000 -ac 2 -i - -nostats -vn -c:a aac -strict -2 -b:a 192k C:\Users\darke\OneDrive\Documents\YolOsu\danser\videos\No title-jieusieu's Lemur_temp\audio.mp4]
+2025/03/11 11:50:19 Progress: 5%, Speed: 3.53x, ETA: 17s
+2025/03/11 11:50:19 Progress: 10%, Speed: 6.49x, ETA: 9s
+2025/03/11 11:50:20 Progress: 15%, Speed: 6.85x, ETA: 8s
+2025/03/11 11:50:20 Progress: 20%, Speed: 7.61x, ETA: 6s
+2025/03/11 11:50:20 Progress: 25%, Speed: 8.15x, ETA: 6s
+2025/03/11 11:50:21 Progress: 30%, Speed: 8.39x, ETA: 5s
+2025/03/11 11:50:21 Progress: 35%, Speed: 7.78x, ETA: 5s
+2025/03/11 11:50:22 Progress: 40%, Speed: 6.73x, ETA: 5s
+2025/03/11 11:50:22 Progress: 45%, Speed: 6.93x, ETA: 5s
+2025/03/11 11:50:23 Progress: 50%, Speed: 4.68x, ETA: 6s
+2025/03/11 11:50:23 Progress: 55%, Speed: 6.42x, ETA: 4s
+2025/03/11 11:50:24 Progress: 60%, Speed: 8.59x, ETA: 3s
+2025/03/11 11:50:24 Progress: 65%, Speed: 7.56x, ETA: 3s
+2025/03/11 11:50:25 Progress: 70%, Speed: 7.53x, ETA: 2s
+2025/03/11 11:50:25 Progress: 75%, Speed: 7.86x, ETA: 2s
+2025/03/11 11:50:25 Progress: 80%, Speed: 7.65x, ETA: 1s
+2025/03/11 11:50:26 Progress: 85%, Speed: 7.74x, ETA: 1s
+2025/03/11 11:50:26 Progress: 90%, Speed: 8.06x, ETA: 0s
+2025/03/11 11:50:27 Progress: 95%, Speed: 8.84x, ETA: 0s
+2025/03/11 11:50:27 Progress: 100%, Speed: 14.09x, ETA: 0s
+2025/03/11 11:50:27 Finishing rendering...
+2025/03/11 11:50:27 Waiting for video to finish writing...
+2025/03/11 11:50:27 Finished! Stopping video pipe...
+2025/03/11 11:50:27 Video pipe closed. Waiting for video ffmpeg process to finish...
+2025/03/11 11:50:27 Video process finished.
+2025/03/11 11:50:27 Audio finished! Stopping audio pipe...
+2025/03/11 11:50:27 Audio pipe closed. Waiting for audio ffmpeg process to finish...
+2025/03/11 11:50:27 Audio process finished.
+2025/03/11 11:50:27 Ffmpeg finished.
+2025/03/11 11:50:27 Starting composing audio and video into one file...
+2025/03/11 11:50:27 Running ffmpeg with options: [-y -i C:\Users\darke\OneDrive\Documents\YolOsu\danser\videos\No title-jieusieu's Lemur_temp\video.mp4 -i C:\Users\darke\OneDrive\Documents\YolOsu\danser\videos\No title-jieusieu's Lemur_temp\audio.mp4 -c:v copy -c:a copy -strict -2 -movflags +faststart C:\Users\darke\OneDrive\Documents\YolOsu\danser\videos\No title-jieusieu's Lemur.mp4]
+2025/03/11 11:50:27 Finished!
+2025/03/11 11:50:27 Video is available at: C:\Users\darke\OneDrive\Documents\YolOsu\danser\videos\No title-jieusieu's Lemur.mp4
+2025/03/11 11:50:27 Cleaning up intermediate files...
+2025/03/11 11:50:27 Finished.
+2025/03/11 11:50:27 Exiting normally.

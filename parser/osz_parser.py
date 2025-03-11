@@ -4,6 +4,7 @@ from emulator.objects import HitCircle, Slider
 from emulator import Beatmap
 import utils.utils as utils
 import re
+import os
 
 def extract_osu_file(osz_path: str) -> Dict[str, str]:
 
@@ -80,14 +81,18 @@ def parse_difficulty(sections: Dict[str, List[str]]) -> Optional[List[float]]:
     if not difficulty_section:
         return None
         
-    
     pattern = re.compile(r":([\d.]+)")
     return [float(match.group(1)) 
             for match in pattern.finditer("\n".join(difficulty_section))]
 
 def parse_osz_file(osz_path: str) -> Beatmap.Beatmap:
-
-    beatmap = Beatmap.Beatmap()
+    filename = os.path.basename(osz_path) 
+    match = re.match(r"(\d+)\s+(.+?)\.osz$", filename)
+        
+    if match is None:
+        print(f"Error: Invalid beatmap filename {filename}")
+        return
+    beatmap = Beatmap.Beatmap(int(match.group(1)), match.group(2).split(" - ", 1)[-1])
     difficulties = extract_osu_file(osz_path)
     
     if not difficulties:

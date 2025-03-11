@@ -48,6 +48,7 @@ def point_at_distance(array, distance):
                 len(array) - 2]
 
     i = 0
+    new_distance = 0
     for i in range(len(array) - 1):
         x = (array[i][0] - array[i + 1][0])
         y = (array[i][1] - array[i + 1][1])
@@ -86,10 +87,10 @@ def cpn(p, n):
 
 
 def array_values(array):
-    
     if isinstance(array, dict):
         return list(array.values())
-    
+    elif not isinstance(array, list):
+        return []
     return array
 
 
@@ -98,16 +99,19 @@ def array_calc(op, array1, array2):
     retour = []
 
     for i in range(minimum):
-        if op == "+":
-            retour.append(array1[i] + array2[i])
-        elif op == "-":
-            retour.append(array1[i] - array2[i])
-        elif op == "*":
-            retour.append(array1[i] * array2[i])
-        elif op == "/":
-            retour.append(array1[i] / array2[i] if array2[i] != 0 else 0)
-        else:  
-            retour.append(array1[i] + array2[i])
+        try:
+            if op == "+":
+                retour.append(array1[i] + array2[i])
+            elif op == "-":
+                retour.append(array1[i] - array2[i])
+            elif op == "*":
+                retour.append(array1[i] * array2[i])
+            elif op == "/":
+                retour.append(array1[i] / array2[i] if array2[i] != 0 else 0)
+            else:  
+                retour.append(array1[i] + array2[i])
+        except Exception:
+            retour.append(0)
 
     return retour
 
@@ -119,10 +123,10 @@ class Bezier:
 
         self.step = (0.0025 / self.order) if self.order > 0 else 1  
         self.pos = {}
+        self.pxlength = 0
         self.calc_points()
 
     def at(self, t):
-        
         if t in self.pos:
             return self.pos[t]
 
@@ -140,7 +144,7 @@ class Bezier:
 
     
     def calc_points(self):
-        if self.pos:  
+        if self.pos and self.pxlength > 0:  
             return
 
         self.pxlength = 0
@@ -156,7 +160,7 @@ class Bezier:
 
     def point_at_distance(self, dist):
         if self.order == 0:
-            return False
+            return [0, 0]
         elif self.order == 1:
             return self.points[0]
         else:
@@ -165,6 +169,8 @@ class Bezier:
     def rec(self, dist):
         self.calc_points()
         values = array_values(self.pos)
+        if not values:
+            return [0, 0]
         result = point_at_distance(values, dist)
         return result[:2] if result else [0, 0]
 
@@ -214,7 +220,7 @@ class Catmull:
 
     def point_at_distance(self, dist):
         if self.order == 0:
-            return False
+            return [0, 0]
         elif self.order == 1:
             return self.points[0]
         else:
@@ -222,6 +228,8 @@ class Catmull:
 
     def rec(self, dist):
         self.calc_points()
+        if not self.pos:
+            return [0, 0]
         result = point_at_distance(self.pos, dist)
         return result[:2] if result else [0, 0]
 
@@ -271,13 +279,11 @@ class Linear:
             segment_length = distance_points(p1, p2)
             
             if current_dist + segment_length >= dist:
-                
                 segment_dist = dist - current_dist
                 return self.point_on_line(p1, p2, segment_dist)
                 
             current_dist += segment_length
             
-        
         return self.points[-1]
 
 
@@ -286,6 +292,9 @@ class PassThrough:
         self.points = points
         self.order = len(points)
         self.pxlength = 0
+        self.cx = None
+        self.cy = None
+        self.radius = None
         self.calc_points()
         
     def calc_points(self):
@@ -333,8 +342,7 @@ class PassThrough:
         
         
         d = 2 * (x1 * (y2 - y3) + x2 * (y3 - y1) + x3 * (y1 - y2))
-        if d == 0:
-            
+        if abs(d) < 1e-10:  
             return None
             
         ux = ((x1 * x1 + y1 * y1) * (y2 - y3) + (x2 * x2 + y2 * y2) * (y3 - y1) + (x3 * x3 + y3 * y3) * (y1 - y2)) / d
@@ -393,7 +401,7 @@ class PassThrough:
             return self.points[-1]
             
         
-        if not hasattr(self, 'radius') or self.radius is None:
+        if self.radius is None or self.cx is None or self.cy is None:
             linear = Linear(self.points)
             return linear.point_at_distance(dist)
             

@@ -192,38 +192,80 @@ class Slider(HitObject):
         polygon = right_side + last_circle + left_side + first_circle
         
         return polygon
-
     def get_segmentation_mask(self, width, height, r):
+            mask = np.zeros((height, width), dtype=np.uint8)
+            
+            curve_points = []
+            num_samples = max(int(self.curve.pxlength / r) * 2, 25)  
+            step = 1.0 / num_samples
+            
+            for i in range(num_samples):  
+                t = i * step
+                distance = t * self.curve.pxlength
+                point = self.curve.point_at_distance(distance)
+                if point:
+                    curve_points.append(point)
+            
+            end_point = self.curve.point_at_distance(self.curve.pxlength)
+            if end_point:
+                curve_points.append(end_point)
+            
+            for point in curve_points:
+                center_x, center_y = round(point[0]), round(point[1])
+                
+                x_min = max(0, round(center_x - r))
+                x_max = min(width, round(center_x + r + 1))
+                y_min = max(0, round(center_y - r))
+                y_max = min(height, round(center_y + r + 1))
+                
+                for y in range(y_min, y_max):
+                    for x in range(x_min, x_max):
+                        if (x - center_x) ** 2 + (y - center_y) ** 2 <= r ** 2:
+                            mask[y, x] = 1
+            
+            return mask
 
+import numpy as np
+import cv2
+import math
+
+
+
+def calc_fade_in(time, t1, t2, limit=1):
+    
+    return limit * (1 / (t2 - t1)) * (time - t1)
+
+def calc_fade_out(time, t1, t2, limit=1):
+    
+    return limit * (-1 / (t2 - t1)) * (time - t2)
+
+
+
+class ApproachCircle:
+    def __init__(self, center, startTime, radius=10, approachRate=1000):
+        self.center = center
+        self.startTime = startTime
+        self.radius = radius
+        self.approachRate = approachRate
+        
+        self.appear = startTime - approachRate
+
+    def get_segmentation_mask(self, width, height, time, thickness=2):
         mask = np.zeros((height, width), dtype=np.uint8)
+        if not (self.appear <= time <= self.startTime):
+            return mask
+
+        opacity = calc_fade_in(time, self.appear, self.startTime, limit=0.5)
+        if opacity < 0.05:
+            return mask  
+
         
         
-        curve_points = []
-        num_samples = max(int(self.curve.pxlength / r) * 2, 50)  
-        step = 1.0 / num_samples
-        
-        for i in range(num_samples + 1):
-            t = i * step
-            distance = t * self.curve.pxlength
-            point = self.curve.point_at_distance(distance)
-            if point:
-                curve_points.append(point)
+        progress = (self.startTime - time) / (self.startTime - self.appear)
+        current_radius = int(self.radius + 3 * progress * self.radius)
+
         
         
-        for point in curve_points:
-            center_x, center_y = round(point[0]), round(point[1])
-            
-            
-            x_min = max(0, round(center_x - r))
-            x_max = min(width, round(center_x + r + 1))
-            y_min = max(0, round(center_y - r))
-            y_max = min(height, round(center_y + r + 1))
-            
-            
-            for y in range(y_min, y_max):
-                for x in range(x_min, x_max):
-                    
-                    if (x - center_x) ** 2 + (y - center_y) ** 2 <= r ** 2:
-                        mask[y, x] = 1
-        
+        cv2.circle(mask, (int(self.center[0]), int(self.center[1])), current_radius, 1, thickness)
         return mask
+

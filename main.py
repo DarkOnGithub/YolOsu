@@ -4,6 +4,7 @@ import numpy as np
 from parser.osz_parser import parse_osz_file
 import utils.curves as curve  
 import sys
+from emulator.objects import HitCircle, Slider,ApproachCircle 
 
 sys.modules['curve'] = curve
 
@@ -53,7 +54,7 @@ def generate_masks_from_beatmap(osz_path, output_dir="beatmap_masks", radius=10)
     
     print(f"All masks saved to {output_dir} directory")
 
-def overlay_objects_on_video(osz_path, difficulty, video_path, output_path="output_video.mp4"):
+def overlay_objects_on_video(osz_path, difficulty, output_path="output_video.mp4"):
 
     width, height = 192, 144
     
@@ -63,7 +64,9 @@ def overlay_objects_on_video(osz_path, difficulty, video_path, output_path="outp
     if not beatmap or not beatmap.difficulties:
         print("No difficulties found in beatmap")
         return
-    
+    video_path = beatmap.generate_clip(difficulty)
+    if video_path is None:
+        print("Difficulty not found in beatmap")
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
         print(f"Error: Could not open video {video_path}")
@@ -97,7 +100,7 @@ def overlay_objects_on_video(osz_path, difficulty, video_path, output_path="outp
     frame_index = 0
     current_obj_index = 0
     
-    offset_ms = -hit_objects[0].time + 1700
+    offset_ms = -hit_objects[0].time + (99 / 60) * 1000
 
     while cap.isOpened():
         ret, frame = cap.read()
@@ -121,31 +124,16 @@ def overlay_objects_on_video(osz_path, difficulty, video_path, output_path="outp
                 break
                 
             if current_time_ms <= hit_time:
-                progress = (current_time_ms - appear_time) / approach_time_ms
-
                 obj_mask = np.zeros((height, width), dtype=np.uint8)
-                
                 base_mask = obj.get_segmentation_mask(width, height, object_radius)
-                
                 obj_mask = np.maximum(obj_mask, base_mask)
                 
-                approach_scale = 3.0 - 2.0 * progress
-                approach_radius = object_radius * approach_scale
+                approach_circle = ApproachCircle((obj.x, obj.y), obj.time, object_radius, approach_time_ms)
+                approach_mask = approach_circle.get_segmentation_mask(width, height, current_time_ms)
                 
-                if approach_scale > 1.05:  
-                    approach_mask = np.zeros((height, width), dtype=np.uint8)
-                    
-                    if isinstance(obj, HitCircle):
-                        x, y = round(obj.x), round(obj.y)
-                        cv2.circle(approach_mask, (x, y), int(approach_radius), 1, 2)
-                    elif isinstance(obj, Slider):
-                        x, y = round(obj.curve_points[0][0]), round(obj.curve_points[0][1])
-                        cv2.circle(approach_mask, (x, y), int(approach_radius), 1, 2)
-                    
-                    obj_mask = np.maximum(obj_mask, approach_mask)
-                
+                obj_mask = np.maximum(obj_mask, approach_mask)
                 frame_mask = np.maximum(frame_mask, obj_mask)
-
+            
             obj_index += 1
 
         if np.any(frame_mask):
@@ -170,12 +158,8 @@ def overlay_objects_on_video(osz_path, difficulty, video_path, output_path="outp
     print(f"Video processing complete: {output_path}")
 
 if __name__ == "__main__":
-    from emulator.objects import HitCircle, Slider
-    
-
     overlay_objects_on_video(
         "maps/320118 Reol - No title.osz",
         "jieusieu's Lemur", 
-        "danser_2025-03-10_22-12-28.mp4", 
         "output_with_objects.mp4"
     )
