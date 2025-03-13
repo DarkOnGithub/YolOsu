@@ -4,30 +4,34 @@ import re
 import sys
 from tkinter import W
 import shutil
+import parser.osz_parser as osz_parser
+
 class Beatmap:
     def __init__(self, id, name):
         print(f"Creating beatmap with id {id} and name {name}")
         self.difficulties = {}
         self.name = name
         self.id = id
-    def add_difficulty(self, name, hit_objects, difficulty):
-        self.difficulties[name] = Difficulty(name, hit_objects, difficulty)
+        
+    def add_difficulty(self, name, hit_objects, difficulty, timing_parser):
+        self.difficulties[name] = Difficulty(name, hit_objects, difficulty, timing_parser)
         
     def generate_clip(self, difficulty):
         if difficulty in self.difficulties:
             return self.difficulties[difficulty].generate_clip(self.name)
         return None
+    
 class Difficulty:
-    def __init__(self, name, hit_objects, difficulty):
+    def __init__(self, name, hit_objects, difficulty, timing_parser):
         self.name = name
         self.hit_objects = hit_objects
-    
         self.difficulty = {
-            "hp": difficulty[0],
+            "h": difficulty[0],
             "cs": difficulty[1],
             "od": difficulty[2],
             "ar": difficulty[3]
         }
+        self.timing_parser = timing_parser
         
     def generate_clip(self, beatmap_name):
         dirname = sys.path[0]
@@ -64,6 +68,7 @@ class Difficulty:
         
         return None
     
-    
     def __str__(self):
         return f"Difficulty {self.name} with {len(self.hit_objects)} hit objects and difficulty {self.difficulty}"
+    
+    

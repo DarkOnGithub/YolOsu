@@ -1,416 +1,277 @@
 import math
+import bisect
+from abc import ABC, abstractmethod
 
-def is_point_in_circle(point, center, radius):
-    return distance_points(point, center) <= radius
-
-
-def distance_points(p1, p2):
-    x = (p1[0] - p2[0])
-    y = (p1[1] - p2[1])
-    return math.sqrt(x * x + y * y)
-
-
-def distance_from_points(array):
-    distance = 0
-
-    for i in range(1, len(array)):
-        distance += distance_points(array[i], array[i - 1])
-
-    return distance
-
-
-def angle_from_points(p1, p2):
-    return math.atan2(p2[1] - p1[1], p2[0] - p1[0])
-
-
-def cart_from_pol(r, teta):
-    x2 = (r * math.cos(teta))
-    y2 = (r * math.sin(teta))
-
-    return [x2, y2]
-
-
-def point_at_distance(array, distance):
-    current_distance = 0
-
-    if len(array) < 2:
-        return [0, 0, 0, 0]
-
-    if distance == 0:
-        angle = angle_from_points(array[0], array[1])
-        return [array[0][0], array[0][1], angle, 0]
-
-    if distance_from_points(array) <= distance:
-        angle = angle_from_points(array[len(array) - 2], array[len(array) - 1])
-        return [array[len(array) - 1][0],
-                array[len(array) - 1][1],
-                angle,
-                len(array) - 2]
-
-    i = 0
-    new_distance = 0
-    for i in range(len(array) - 1):
-        x = (array[i][0] - array[i + 1][0])
-        y = (array[i][1] - array[i + 1][1])
-
-        new_distance = math.sqrt(x * x + y * y)
-        current_distance += new_distance
-
-        if distance <= current_distance:
-            break
-
-    current_distance -= new_distance
-
-    if distance == current_distance:
-        coord = [array[i][0], array[i][1]]
-        angle = angle_from_points(array[i], array[i + 1])
-    else:
-        angle = angle_from_points(array[i], array[i + 1])
-        cart = cart_from_pol((distance - current_distance), angle)
-
-        if array[i][0] > array[i + 1][0]:
-            coord = [(array[i][0] - cart[0]), (array[i][1] - cart[1])]
-        else:
-            coord = [(array[i][0] + cart[0]), (array[i][1] + cart[1])]
-
-    return [coord[0], coord[1], angle, i]
-
-
-def cpn(p, n):
-    if p < 0 or p > n:
-        return 0
-    p = min(p, n - p)
-    out = 1
-    for i in range(1, p + 1):
-        out = out * (n - p + i) / i
-    return out
-
-
-def array_values(array):
-    if isinstance(array, dict):
-        return list(array.values())
-    elif not isinstance(array, list):
-        return []
-    return array
-
-
-def array_calc(op, array1, array2):
-    minimum = min(len(array1), len(array2))
-    retour = []
-
-    for i in range(minimum):
-        try:
-            if op == "+":
-                retour.append(array1[i] + array2[i])
-            elif op == "-":
-                retour.append(array1[i] - array2[i])
-            elif op == "*":
-                retour.append(array1[i] * array2[i])
-            elif op == "/":
-                retour.append(array1[i] / array2[i] if array2[i] != 0 else 0)
-            else:  
-                retour.append(array1[i] + array2[i])
-        except Exception:
-            retour.append(0)
-
-    return retour
-
-
-class Bezier:
+class Curve(ABC):
     def __init__(self, points):
         self.points = points
-        self.order = len(points)
+        self.length = 0.0
+        self.distances = []
+        self._calculate()
 
-        self.step = (0.0025 / self.order) if self.order > 0 else 1  
-        self.pos = {}
-        self.pxlength = 0
-        self.calc_points()
+    @abstractmethod
+    def _calculate(self):
+        pass
 
-    def at(self, t):
-        if t in self.pos:
-            return self.pos[t]
+    @abstractmethod
+    def point_at(self, t):
+        pass
 
-        x = 0
-        y = 0
-        n = self.order - 1
+    def get_length(self):
+        return self.length
 
-        for i in range(n + 1):
-            x += cpn(i, n) * ((1 - t) ** (n - i)) * (t ** i) * self.points[i][0]
-            y += cpn(i, n) * ((1 - t) ** (n - i)) * (t ** i) * self.points[i][1]
+    def get_points(self):
+        return self.points
 
-        self.pos[t] = [x, y]
-
-        return [x, y]
-
-    
-    def calc_points(self):
-        if self.pos and self.pxlength > 0:  
+class Linear(Curve):
+    def _calculate(self):
+        if len(self.points) < 2:
+            self.length = 0.0
             return
 
-        self.pxlength = 0
-        prev = self.at(0)
-        i = 0
-        end = 1 + self.step
+        self.distances = [0.0]
+        self.length = 0.0
 
-        while i < end:
-            current = self.at(i)
-            self.pxlength += distance_points(prev, current)
-            prev = current
-            i += self.step
+        for i in range(1, len(self.points)):
+            dx = self.points[i][0] - self.points[i-1][0]
+            dy = self.points[i][1] - self.points[i-1][1]
+            segment_length = math.hypot(dx, dy)
+            self.length += segment_length
+            self.distances.append(self.length)
 
-    def point_at_distance(self, dist):
-        if self.order == 0:
-            return [0, 0]
-        elif self.order == 1:
+    def point_at(self, t):
+        if len(self.points) < 2:
+            return (0, 0) if not self.points else self.points[0]
+
+        t = max(0.0, min(1.0, t))
+        target = t * self.length
+
+        idx = bisect.bisect_left(self.distances, target)
+        if idx == 0:
             return self.points[0]
-        else:
-            return self.rec(dist)
+        if idx >= len(self.points):
+            return self.points[-1]
 
-    def rec(self, dist):
-        self.calc_points()
-        values = array_values(self.pos)
-        if not values:
-            return [0, 0]
-        result = point_at_distance(values, dist)
-        return result[:2] if result else [0, 0]
+        p1 = self.points[idx-1]
+        p2 = self.points[idx]
+        segment_length = self.distances[idx] - self.distances[idx-1]
 
-
-
-class Catmull:
-    def __init__(self, points):
-        self.points = points
-        self.order = len(points)
-
-        self.step = 0.025
-        self.pos = []
-        self.calc_points()
-
-    def at(self, x, t):
-        v1 = self.points[x - 1] if x >= 1 else self.points[x]
-        v2 = self.points[x]
-        v3 = self.points[x + 1] if x + 1 < self.order else self._calc_point(v2, v1, "-")
-        v4 = self.points[x + 2] if x + 2 < self.order else self._calc_point(v3, v2, "-")
-
-        retour = [0, 0]  
-        for i in range(2):
-            retour[i] = 0.5 * (
-                (-v1[i] + 3 * v2[i] - 3 * v3[i] + v4[i]) * t * t * t + (
-                    2 * v1[i] - 5 * v2[i] + 4 * v3[i] - v4[i]) * t * t + (
-                    -v1[i] + v3[i]) * t + 2 * v2[i])
-
-        return retour
-
-    def _calc_point(self, p1, p2, op):
-        result = []
-        for i in range(2):
-            if op == "+":
-                result.append(p1[i] + p2[i])
-            elif op == "-":
-                result.append(p1[i] - p2[i])
-        return result
-
-    def calc_points(self):
-        if self.pos:  
-            return
-        for i in range(self.order - 1):
-            t = 0
-            while t <= 1:
-                self.pos.append(self.at(i, t))
-                t += self.step
-
-    def point_at_distance(self, dist):
-        if self.order == 0:
-            return [0, 0]
-        elif self.order == 1:
-            return self.points[0]
-        else:
-            return self.rec(dist)
-
-    def rec(self, dist):
-        self.calc_points()
-        if not self.pos:
-            return [0, 0]
-        result = point_at_distance(self.pos, dist)
-        return result[:2] if result else [0, 0]
-
-
-class Linear:
-    def __init__(self, points):
-        self.points = points
-        self.order = len(points)
-        self.pxlength = 0
-        if self.order >= 2:
-            self.calc_points()
-    
-    def calc_points(self):
-        if self.order < 2:
-            return
-            
-        self.pxlength = 0
-        for i in range(1, self.order):
-            p1 = self.points[i-1]
-            p2 = self.points[i]
-            self.pxlength += distance_points(p1, p2)
-    
-    def point_on_line(self, p1, p2, length):
-        full_length = math.sqrt(math.pow(p2[0] - p1[0], 2) + math.pow(p2[1] - p1[1], 2))
-        if full_length == 0:
+        if segment_length == 0:
             return p1
-            
-        n = full_length - length
-        
-        x = (n * p1[0] + length * p2[0]) / full_length
-        y = (n * p1[1] + length * p2[1]) / full_length
-        return [x, y]
-    
-    def point_at_distance(self, dist):
-        if self.order < 2:
-            return self.points[0] if self.order > 0 else [0, 0]
-            
-        if dist <= 0:
-            return self.points[0]
-        if dist >= self.pxlength:
-            return self.points[-1]
-            
-        current_dist = 0
-        for i in range(1, self.order):
-            p1 = self.points[i-1]
-            p2 = self.points[i]
-            segment_length = distance_points(p1, p2)
-            
-            if current_dist + segment_length >= dist:
-                segment_dist = dist - current_dist
-                return self.point_on_line(p1, p2, segment_dist)
-                
-            current_dist += segment_length
-            
-        return self.points[-1]
 
+        t_segment = (target - self.distances[idx-1]) / segment_length
+        return (
+            p1[0] + (p2[0] - p1[0]) * t_segment,
+            p1[1] + (p2[1] - p1[1]) * t_segment
+        )
 
-class PassThrough:
-    def __init__(self, points):
-        self.points = points
-        self.order = len(points)
-        self.pxlength = 0
-        self.cx = None
-        self.cy = None
-        self.radius = None
-        self.calc_points()
-        
-    def calc_points(self):
-        if self.order < 2:
+class Bezier(Curve):
+    def _calculate(self):
+        if len(self.points) < 2:
+            self.length = 0.0
             return
-            
-        
-        if self.order == 2:
-            linear = Linear(self.points)
-            self.pxlength = linear.pxlength
+
+        self.steps = 1000
+        self.samples = []
+        self.distances = [0.0]
+        self.length = 0.0
+
+        prev = self._de_casteljau(0.0)
+        self.samples.append(prev)
+
+        for i in range(1, self.steps+1):
+            t = i / self.steps
+            current = self._de_casteljau(t)
+            distance = math.hypot(current[0]-prev[0], current[1]-prev[1])
+            self.length += distance
+            self.distances.append(self.length)
+            self.samples.append(current)
+            prev = current
+
+    def _de_casteljau(self, t):
+        points = [list(p) for p in self.points]
+        n = len(points)
+        for r in range(1, n):
+            for i in range(n - r):
+                points[i][0] = (1 - t) * points[i][0] + t * points[i+1][0]
+                points[i][1] = (1 - t) * points[i][1] + t * points[i+1][1]
+        return (points[0][0], points[0][1])
+
+    def point_at(self, t):
+        if len(self.points) < 2:
+            return (0, 0) if not self.points else self.points[0]
+
+        t = max(0.0, min(1.0, t))
+        target = t * self.length
+
+        idx = bisect.bisect_left(self.distances, target)
+        if idx == 0:
+            return self.samples[0]
+        if idx >= len(self.samples):
+            return self.samples[-1]
+
+        t1 = (idx-1) / self.steps
+        t2 = idx / self.steps
+        distance1 = self.distances[idx-1]
+        distance2 = self.distances[idx]
+
+        if distance2 - distance1 == 0:
+            return self.samples[idx-1]
+
+        t_segment = (target - distance1) / (distance2 - distance1)
+        t_final = t1 + (t2 - t1) * t_segment
+        return self._de_casteljau(t_final)
+
+class Catmull(Curve):
+    def __init__(self, points, alpha=0.5):
+        self.alpha = alpha
+        super().__init__(points)
+
+    def _calculate(self):
+        if len(self.points) < 2:
+            self.length = 0.0
             return
-            
-        
-        if self.order > 3:
-            bezier = Bezier(self.points)
-            self.pxlength = bezier.pxlength
-            return
-            
-        
-        p1 = self.points[0]
-        p2 = self.points[1]
-        p3 = self.points[2]
-        
-        circle_data = self.get_circum_circle(p1, p2, p3)
-        if circle_data is None:
-            
-            linear = Linear(self.points)
-            self.pxlength = linear.pxlength
-            return
-            
-        cx, cy, radius = circle_data
-        
-        self.cx = cx
-        self.cy = cy
-        self.radius = radius
-        
-        
-        angle = self.calculate_arc_angle(p1, p2, p3, cx, cy)
-        self.pxlength = abs(angle * radius)
-    
-    def get_circum_circle(self, p1, p2, p3):
-        x1, y1 = p1
-        x2, y2 = p2
-        x3, y3 = p3
-        
-        
-        d = 2 * (x1 * (y2 - y3) + x2 * (y3 - y1) + x3 * (y1 - y2))
-        if abs(d) < 1e-10:  
-            return None
-            
-        ux = ((x1 * x1 + y1 * y1) * (y2 - y3) + (x2 * x2 + y2 * y2) * (y3 - y1) + (x3 * x3 + y3 * y3) * (y1 - y2)) / d
-        uy = ((x1 * x1 + y1 * y1) * (x3 - x2) + (x2 * x2 + y2 * y2) * (x1 - x3) + (x3 * x3 + y3 * y3) * (x2 - x1)) / d
-        
-        px = ux - x1
-        py = uy - y1
-        r = math.sqrt(px * px + py * py)
-        
-        return ux, uy, r
-    
-    def is_left(self, a, b, c):
-        return ((b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])) < 0
-    
-    def rotate(self, cx, cy, x, y, radians):
-        cos = math.cos(radians)
-        sin = math.sin(radians)
-        
-        return [
-            (cos * (x - cx)) - (sin * (y - cy)) + cx,
-            (sin * (x - cx)) + (cos * (y - cy)) + cy
-        ]
-    
-    def calculate_arc_angle(self, p1, p2, p3, cx, cy):
-        
-        angle = math.atan2(p3[1] - cy, p3[0] - cx) - math.atan2(p1[1] - cy, p1[0] - cx)
-        
-        
-        if self.is_left(p1, p2, p3):
-            if angle > 0:
-                angle = -(2 * math.pi - angle)
-        else:
-            if angle < 0:
-                angle = 2 * math.pi + angle
-                
-        return angle
-    
-    def point_at_distance(self, dist):
-        if self.order < 2:
-            return self.points[0] if self.order > 0 else [0, 0]
-            
-        
-        if self.order == 2:
-            linear = Linear(self.points)
-            return linear.point_at_distance(dist)
-            
-        
-        if self.order > 3:
-            bezier = Bezier(self.points)
-            return bezier.point_at_distance(dist)
-            
-        
-        if dist <= 0:
+
+        self.segments = []
+        self.distances = [0.0]
+        self.length = 0.0
+
+        for i in range(len(self.points)-1):
+            p0 = self.points[max(i-1, 0)]
+            p1 = self.points[i]
+            p2 = self.points[i+1]
+            p3 = self.points[min(i+2, len(self.points)-1)]
+
+            t0 = 0.0
+            t1 = self._get_t(t0, p0, p1)
+            t2 = self._get_t(t1, p1, p2)
+            t3 = self._get_t(t2, p2, p3)
+
+            self.segments.append((p0, p1, p2, p3, t0, t1, t2, t3))
+
+        prev = self.point_at(0.0)
+        self.distances = [0.0]
+        steps = 100
+        for i in range(1, steps+1):
+            t = i / steps
+            current = self.point_at(t)
+            distance = math.hypot(current[0]-prev[0], current[1]-prev[1])
+            self.length += distance
+            self.distances.append(self.length)
+            prev = current
+
+    def _get_t(self, t, p1, p2):
+        dx = p2[0] - p1[0]
+        dy = p2[1] - p1[1]
+        return t + math.pow(math.hypot(dx, dy), self.alpha)
+
+    def point_at(self, t):
+        if len(self.points) < 2:
+            return (0, 0) if not self.points else self.points[0]
+
+        t_total = max(0.0, min(1.0, t)) * self.length
+        idx = bisect.bisect_left(self.distances, t_total)
+        if idx == 0:
             return self.points[0]
-        if dist >= self.pxlength:
+        if idx >= len(self.distances):
             return self.points[-1]
-            
-        
-        if self.radius is None or self.cx is None or self.cy is None:
-            linear = Linear(self.points)
-            return linear.point_at_distance(dist)
-            
-        
-        radians = dist / self.radius
-        
-        
-        if self.is_left(self.points[0], self.points[1], self.points[2]):
-            radians *= -1
-            
-        
-        return self.rotate(self.cx, self.cy, self.points[0][0], self.points[0][1], radians)
+
+        t1 = (idx-1) / len(self.distances)
+        t2 = idx / len(self.distances)
+        ratio = (t_total - self.distances[idx-1]) / (self.distances[idx] - self.distances[idx-1])
+        t_segment = t1 + (t2 - t1) * ratio
+
+        return self._catmull_rom(t_segment)
+
+    def _catmull_rom(self, t):
+        t = max(0.0, min(1.0, t))
+        segment_idx = int(t * len(self.segments))
+        if segment_idx >= len(self.segments):
+            return self.points[-1]
+
+        p0, p1, p2, p3, t0, t1, t2, t3 = self.segments[segment_idx]
+        t_segment = (t - segment_idx/len(self.segments)) * len(self.segments)
+
+        t01 = t1 - t0
+        t12 = t2 - t1
+        t23 = t3 - t2
+
+        m1 = (
+            (p1[0] - p0[0]) * t12 / t01,
+            (p1[1] - p0[1]) * t12 / t01
+        ) if t01 > 0 else (0, 0)
+
+        m2 = (
+            (p2[0] - p1[0]) * t12 / t23,
+            (p2[1] - p1[1]) * t12 / t23
+        ) if t23 > 0 else (0, 0)
+
+        a = 2*p1[0] - 2*p2[0] + m1[0] + m2[0]
+        b = -3*p1[0] + 3*p2[0] - 2*m1[0] - m2[0]
+        c = m1[0]
+        d = p1[0]
+
+        x = a*t_segment**3 + b*t_segment**2 + c*t_segment + d
+
+        a = 2*p1[1] - 2*p2[1] + m1[1] + m2[1]
+        b = -3*p1[1] + 3*p2[1] - 2*m1[1] - m2[1]
+        c = m1[1]
+        d = p1[1]
+
+        y = a*t_segment**3 + b*t_segment**2 + c*t_segment + d
+
+        return (x, y)
+
+class Perfect(Curve):
+    def _calculate(self):
+        if len(self.points) != 3:
+            self.length = 0.0
+            return
+
+        p1, p2, p3 = self.points
+        self.center, self.radius = self._find_circle(p1, p2, p3)
+        if self.center is None:
+            self.linear = Linear(self.points)
+            self.length = self.linear.get_length()
+            return
+
+        self.start_angle = math.atan2(p1[1]-self.center[1], p1[0]-self.center[0])
+        self.end_angle = math.atan2(p3[1]-self.center[1], p3[0]-self.center[0])
+        self.angle_diff = self.end_angle - self.start_angle
+
+        cross = (p2[0]-p1[0])*(p3[1]-p2[1]) - (p2[1]-p1[1])*(p3[0]-p2[0])
+        if (cross > 0 and self.angle_diff > 0) or (cross < 0 and self.angle_diff < 0):
+            self.angle_diff -= math.copysign(2*math.pi, self.angle_diff)
+
+        self.length = abs(self.angle_diff) * self.radius
+
+    def _find_circle(self, p1, p2, p3):
+        ax, ay = p1
+        bx, by = p2
+        cx, cy = p3
+
+        d = 2*(ax*(by - cy) + bx*(cy - ay) + cx*(ay - by))
+        if d == 0:
+            return None, 0
+
+        ux = ((ax**2 + ay**2)*(by - cy) + 
+             (bx**2 + by**2)*(cy - ay) + 
+             (cx**2 + cy**2)*(ay - by)) / d
+        uy = ((ax**2 + ay**2)*(cx - bx) + 
+             (bx**2 + by**2)*(ax - cx) + 
+             (cx**2 + cy**2)*(bx - ax)) / d
+
+        radius = math.hypot(ax - ux, ay - uy)
+        return (ux, uy), radius
+
+    def point_at(self, t):
+        if len(self.points) != 3 or self.center is None:
+            if hasattr(self, 'linear'):
+                return self.linear.point_at(t)
+            return self.points[0] if self.points else (0, 0)
+
+        angle = self.start_angle + self.angle_diff * t
+        return (
+            self.center[0] + self.radius * math.cos(angle),
+            self.center[1] + self.radius * math.sin(angle)
+        )
