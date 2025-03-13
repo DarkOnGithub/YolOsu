@@ -27,3 +27,20 @@ def get_difficulty(name):
         return group_in_brackets
     else:
         return None
+    
+def calculate_hit_object_timing(ar):
+    if ar < 5:
+        preempt = 1200 + 600 * (5 - ar) / 5
+    elif ar == 5:
+        preempt = 1200
+    else:
+        preempt = 1200 - 750 * (ar - 5) / 5
+    
+    if ar < 5:
+        fade_in = 800 + 400 * (5 - ar) / 5
+    elif ar == 5:
+        fade_in = 800
+    else:
+        fade_in = 800 - 500 * (ar - 5) / 5
+    
+    return preempt, fade_in

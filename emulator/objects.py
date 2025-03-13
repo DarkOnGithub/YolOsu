@@ -94,70 +94,32 @@ class Slider(HitObject):
         
         return mask
 
-import numpy as np
-import cv2
-import math
-
-
-
-def calc_fade_in(time, t1, t2, limit=1):
-    
-    return limit * (1 / (t2 - t1)) * (time - t1)
-
-def calc_fade_out(time, t1, t2, limit=1):
-    
-    return limit * (-1 / (t2 - t1)) * (time - t2)
 
 class ApproachCircle:
-    def __init__(self, center, startTime, radius=10, approach_rate=5):
+    def __init__(self, center, time, approach_time_ms, radius=10):
         self.center = center
-        self.startTime = startTime
-        self.radius = radius
-        self.approach_rate = approach_rate
+        self.time = time
+        self.radius = radius            
+        self.appear = time - approach_time_ms
         
-        if approach_rate < 5:
-            self.preempt = 1200 + 600 * (5 - approach_rate) / 5
-        elif approach_rate == 5:
-            self.preempt = 1200
-        else: 
-            self.preempt = 1200 - 750 * (approach_rate - 5) / 5
-        
-        if approach_rate < 5:
-            self.fadeInTime = 800 + 400 * (5 - approach_rate) / 5
-        elif approach_rate == 5:
-            self.fadeInTime = 800
-        else: 
-            self.fadeInTime = 800 - 500 * (approach_rate - 5) / 5
-            
-        self.appear = startTime - self.preempt
-
-    def get_segmentation_mask(self, width, height, time, thickness=2):
+    def get_segmentation_mask(self, width, height, time, thickness=1):
         mask = np.zeros((height, width), dtype=np.uint8)
         
-        if time < self.appear or time > self.startTime:
+        if time < self.appear or time >= self.time:
             return mask
+            
+        progress = (time - self.appear) / (self.time - self.appear)
         
-        fadeInEnd = self.appear + self.fadeInTime
+        scale = 4.0 - 3.0 * progress
         
-        if time < fadeInEnd:
-            opacity = calc_fade_in(time, self.appear, fadeInEnd, limit=0.9)
+        current_radius = int(round(self.radius * scale))
+        
+        center_x = int((self.center[0]))
+        center_y = int((self.center[1]))
+        print(self.time, time)
+        if abs(self.time - time) < 20:
+            cv2.circle(mask, (center_x, center_y), current_radius, 1, 5)
         else:
-            opacity = 0.9
-        
-        if self.startTime - time <= 10:
-            opacity = opacity * (self.startTime - time) / 10
-        
-        
-        if opacity < 0.05:
-            return mask
-        
-        
-        progress = (time - self.appear) / self.preempt
-        scale = 4.0 - 3.0 * progress  
-        current_radius = round(self.radius * scale)
-        
-        
-        cv2.circle(mask, (round(self.center[0]), round(self.center[1])),
-                  current_radius, round(opacity * 255), thickness)
+            cv2.circle(mask, (center_x, center_y), current_radius, 1, thickness)
         
         return mask

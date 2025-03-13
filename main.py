@@ -1,19 +1,21 @@
 import os
+import re
 import cv2
 import numpy as np
 from parser.osz_parser import parse_osz_file
 import utils.curves as curve  
 import sys
 from emulator.objects import HitCircle, Slider,ApproachCircle 
-
+import utils.utils as utils
 sys.modules['curve'] = curve
 
 def calculate_approach_time(ar):
-
-    if ar < 5:
-        return 1800 - 120 * ar
+    if ar == 5:
+        return 1200
+    elif ar < 5:
+        return 1200 + 600 * (5 - ar) / 5
     else:
-        return 1200 - 150 * (ar - 5)
+        return 1200 - 750 * (ar - 5) / 5
 
 def generate_masks_from_beatmap(osz_path, output_dir="beatmap_masks", radius=10):
 
@@ -53,6 +55,7 @@ def generate_masks_from_beatmap(osz_path, output_dir="beatmap_masks", radius=10)
         print(f"  Completed {len(difficulty.hit_objects)} objects for difficulty {diff_name}")
     
     print(f"All masks saved to {output_dir} directory")
+
 def overlay_objects_on_video(osz_path, difficulty, output_path="output_video.mp4"):
     width, height = 192, 144
     
@@ -64,6 +67,7 @@ def overlay_objects_on_video(osz_path, difficulty, output_path="output_video.mp4
     video_path = beatmap.generate_clip(difficulty)
     if video_path is None:
         print("Difficulty not found in beatmap")
+        return
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
         print(f"Error: Could not open video {video_path}")
@@ -93,22 +97,13 @@ def overlay_objects_on_video(osz_path, difficulty, output_path="output_video.mp4
     object_radius = object_radius * scale_factor
     
     hit_objects = sorted(difficulty.hit_objects, key=lambda obj: obj.time)
-    
     ms_per_frame = 1000 / fps
     frame_index = 0
     current_obj_index = 0
+    offset_ms = -hit_objects[0].time + 1000 + min(1800, approach_time_ms)
     
-    offset_ms = -hit_objects[0].time + (99 / 60) * 1000
-
     
-    colors = {
-        'hitcircle': (255, 0, 0),     
-        'bezier': (0, 0, 255),        
-        'catmull': (0, 255, 0),       
-        'linear': (0, 255, 255),      
-        'passthrough': (255, 0, 255)  
-    }
-    
+    hit_time_window = 50  
     
     while cap.isOpened():
         ret, frame = cap.read()
@@ -118,14 +113,9 @@ def overlay_objects_on_video(osz_path, difficulty, output_path="output_video.mp4
         current_time_ms = frame_index * ms_per_frame - offset_ms
         
         
-        masks = {
-            'hitcircle': np.zeros((height, width), dtype=np.uint8),
-            'bezier': np.zeros((height, width), dtype=np.uint8),
-            'catmull': np.zeros((height, width), dtype=np.uint8),
-            'linear': np.zeros((height, width), dtype=np.uint8),
-            'passthrough': np.zeros((height, width), dtype=np.uint8)
-        }
-        
+        mask = np.zeros((height, width), dtype=np.uint8)
+        approach_mask = np.zeros((height, width), dtype=np.uint8)
+        hit_time_mask = np.zeros((height, width), dtype=np.uint8)  
         
         while current_obj_index < len(hit_objects) and hit_objects[current_obj_index].time < current_time_ms:
             current_obj_index += 1
@@ -140,66 +130,47 @@ def overlay_objects_on_video(osz_path, difficulty, output_path="output_video.mp4
                 break
                 
             if current_time_ms <= hit_time:
+                
                 base_mask = obj.get_segmentation_mask(width, height, object_radius)
                 
                 
-                if isinstance(obj, HitCircle):
-                    mask_type = 'hitcircle'
-                elif isinstance(obj, Slider):
-                    
-                    if obj.curve_type == "b":
-                        mask_type = 'bezier'
-                    elif obj.curve_type == "c":
-                        mask_type = 'catmull'
-                    elif obj.curve_type == "l":
-                        mask_type = 'linear'
-                    elif obj.curve_type == "p":
-                        mask_type = 'passthrough'
-                    else:
-                        mask_type = 'bezier'  
+                if abs(current_time_ms - hit_time) <= hit_time_window:
+                    hit_time_mask = np.maximum(hit_time_mask, base_mask)
                 else:
-                    mask_type = 'hitcircle'  
+                    mask = np.maximum(mask, base_mask)
                 
                 
-                masks[mask_type] = np.maximum(masks[mask_type], base_mask)
+                approach_circle = ApproachCircle((obj.x, obj.y), obj.time, approach_time_ms, object_radius)
+                circle_mask = approach_circle.get_segmentation_mask(width, height, current_time_ms)
                 
                 
-                approach_circle = ApproachCircle((obj.x, obj.y), obj.time, object_radius, ar)
-                approach_mask = approach_circle.get_segmentation_mask(width, height, current_time_ms)
-                
-                
-                masks[mask_type] = np.maximum(masks[mask_type], approach_mask)
+                if abs(current_time_ms - hit_time) <= hit_time_window:
+                    hit_time_mask = np.maximum(hit_time_mask, circle_mask)
+                else:
+                    approach_mask = np.maximum(approach_mask, circle_mask)
             
             obj_index += 1
-
         
-        any_objects = any(np.any(mask) for mask in masks.values())
-        
-        if any_objects:
+        if np.any(mask) or np.any(approach_mask) or np.any(hit_time_mask):
+            white_mask = np.zeros((video_height, video_width, 3), dtype=np.uint8)
+            blue_mask = np.zeros((video_height, video_width, 3), dtype=np.uint8)
             
-            colored_mask = np.zeros((video_height, video_width, 3), dtype=np.uint8)
+            if np.any(mask) or np.any(approach_mask):
+                combined_white = np.maximum(mask, approach_mask)
+                resized_white = cv2.resize(combined_white, (video_width, video_height))
+                white_mask[resized_white > 0] = (255, 255, 255)  
             
-            
-            for mask_type, mask in masks.items():
-                if np.any(mask):
-                    resized_mask = cv2.resize(mask, (video_width, video_height))
-                    color = colors[mask_type]
-                    colored_mask[resized_mask > 0] = color
-            
+            if np.any(hit_time_mask):
+                resized_blue = cv2.resize(hit_time_mask, (video_width, video_height))
+                blue_mask[resized_blue > 0] = (255, 0, 0)  
             
             cv2.putText(frame, f"Frame: {frame_index} Time: {current_time_ms:.0f}ms", 
-                     (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
-            
-            
-            y_pos = 40
-            for obj_type, color in colors.items():
-                cv2.putText(frame, obj_type, (10, y_pos), 
-                         cv2.FONT_HERSHEY_SIMPLEX, 0.4, color, 1)
-                y_pos += 20
+                      (0, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
             
             
             alpha = 0.5
-            frame = cv2.addWeighted(frame, 1, colored_mask, alpha, 0)
+            frame = cv2.addWeighted(frame, 1, white_mask, alpha, 0)
+            frame = cv2.addWeighted(frame, 1, blue_mask, alpha, 0)
         
         out.write(frame)
         frame_index += 1
@@ -213,7 +184,8 @@ def overlay_objects_on_video(osz_path, difficulty, output_path="output_video.mp4
     
 if __name__ == "__main__":
     overlay_objects_on_video(
-        "1001507 ZUTOMAYO - Kan Saete Kuyashiiwa",
-        "geragera", 
+        "320118 Reol - No title",
+        "jieusieu's Lemur", 
         "output_with_objects.mp4"
     )
+

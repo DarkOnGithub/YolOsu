@@ -12,7 +12,7 @@
 		"Height": 144,
 		"WindowWidth": 192,
 		"WindowHeight": 144,
-		"Fullscreen": true,
+		"Fullscreen": false,
 		"VSync": false,
 		"FPSCap": 0,
 		"MSAA": 0,
@@ -330,9 +330,9 @@
 				"CustomResolutionY": 1080
 			},
 			"Snaking": {
-				"In": true,
-				"Out": true,
-				"OutFadeInstant": true,
+				"In": false,
+				"Out": false,
+				"OutFadeInstant": false,
 				"DurationMultiplier": 0,
 				"FadeMultiplier": 0
 			}
@@ -417,15 +417,15 @@
 		"ShiftY": 0,
 		"ScaleStoryboardWithPlayfield": false,
 		"MoveStoryboardWithPlayfield": false,
-		"LeadInTime": 5,
-		"LeadInHold": 2,
-		"FadeOutTime": 5,
+		"LeadInTime": 0,
+		"LeadInHold": 0,
+		"FadeOutTime": 0,
 		"SeizureWarning": {
 			"Enabled": false,
 			"Duration": 5
 		},
 		"Background": {
-			"LoadStoryboards": true,
+			"LoadStoryboards": false,
 			"LoadVideos": false,
 			"FlashToTheBeat": false,
 			"Dim": {
@@ -434,7 +434,7 @@
 				"Breaks": 0.5
 			},
 			"Parallax": {
-				"Enabled": true,
+				"Enabled": false,
 				"Amount": 0.1,
 				"Speed": 0.5
 			},
@@ -457,12 +457,12 @@
 			}
 		},
 		"Logo": {
-			"Enabled": true,
+			"Enabled": false,
 			"DrawSpectrum": false,
 			"Dim": {
 				"Intro": 0,
-				"Normal": 1,
-				"Breaks": 1
+				"Normal": 0,
+				"Breaks": 0
 			}
 		},
 		"Bloom": {
