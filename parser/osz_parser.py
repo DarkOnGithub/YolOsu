@@ -12,21 +12,35 @@ class TimingPoint:
         self.offset = offset
         self.ms_per_beat = ms_per_beat
         self.uninherited = uninherited
+        # For slider velocity calculation (100% = 1.0x)
+        self.velocity_multiplier = 1.0 if uninherited or ms_per_beat >= 0 else 100.0 / -ms_per_beat
 
 class TimingParser:
     def __init__(self, timing_points: List[TimingPoint]):
+        # Keep all points for reference
+        self.timing_points = sorted(timing_points, key=lambda x: x.offset)
+        
+        # Split uninherited and inherited points
         self.uninherited_points = sorted(
             [tp for tp in timing_points if tp.uninherited],
             key=lambda x: x.offset
         )
-        self.offsets = [tp.offset for tp in self.uninherited_points]
+        self.offsets = [tp.offset for tp in self.timing_points]
+        self.uninherited_offsets = [tp.offset for tp in self.uninherited_points]
         
     def get_beat_duration(self, time: float) -> float:
         if not self.uninherited_points:
             return 600.0  
         
-        idx = bisect.bisect_right(self.offsets, time) - 1
+        idx = bisect.bisect_right(self.uninherited_offsets, time) - 1
         return self.uninherited_points[idx].ms_per_beat if idx >= 0 else 600.0
+    
+    def get_velocity_multiplier(self, time: float) -> float:
+        if not self.timing_points:
+            return 1.0
+            
+        idx = bisect.bisect_right(self.offsets, time) - 1
+        return self.timing_points[idx].velocity_multiplier if idx >= 0 else 1.0
 
 def extract_osu_file(osz_path: str) -> Dict[str, str]:
     difficulties = {}
@@ -83,14 +97,17 @@ def parse_hit_objects(hit_objects: List[str], timing_parser: TimingParser) -> Li
         parts = line.split(',')
         x, y, time, type_ = map(int, parts[:4])
         
-        if type_ & 2:  
+        if type_ & 2:  # Slider
             params = parts[5].split('|')
             curve_type = params[0][0]
             curve_points = [tuple(map(int, p.split(':'))) for p in params[1:]]
             length = float(parts[7])
+            repeats = int(parts[6])  # Get repeat count
             beat_duration = timing_parser.get_beat_duration(time)
-            objects.append(Slider(x, y, time, curve_type, curve_points, length, beat_duration))
-        elif type_ & 1:
+            velocity_multiplier = timing_parser.get_velocity_multiplier(time)
+            
+            objects.append(Slider(x, y, time, curve_type, curve_points, length, beat_duration, repeats, velocity_multiplier))
+        elif type_ & 1:  # Hit Circle
             objects.append(HitCircle(x, y, time))
     return objects
 

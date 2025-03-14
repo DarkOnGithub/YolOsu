@@ -16,7 +16,6 @@ def calculate_approach_time(ar):
         return 1200 + 600 * (5 - ar) / 5
     else:
         return 1200 - 750 * (ar - 5) / 5
-
 def overlay_objects_on_video(osz_path, difficulty, output_path="output_video.mp4"):
     width, height = 192, 144
     
@@ -57,15 +56,26 @@ def overlay_objects_on_video(osz_path, difficulty, output_path="output_video.mp4
     object_radius = object_radius * scale_factor
     
     hit_objects = sorted(difficulty.hit_objects, key=lambda obj: obj.time)
+    if not hit_objects:
+        print("No hit objects to process.")
+        return
+    
+    # Calculate offset based on first hit object's appearance time
+    first_obj = hit_objects[0]
+    first_appear = first_obj.time - approach_time_ms
+    pre_roll = 1000  # 1 second before first approach circle appears
+    desired_start_time = max(0, first_appear - pre_roll)
+    offset_ms = -desired_start_time
+    print(f"Adjusted offset to {offset_ms}ms. First object appears at {first_appear}ms, video starts at {desired_start_time}ms")
+    
     ms_per_frame = 1000 / fps
     frame_index = 0
-    current_obj_index = 0
-    offset_ms = -hit_objects[0].time + 1000 + min(1800, approach_time_ms)
-    
-    
     temporal_buffer_ms = max(ms_per_frame * 1.5, 5)  
     
-    hit_time_window = max(50, ms_per_frame * 2)  
+    # Seek to the desired start time if possible
+    desired_start_frame = int(desired_start_time * fps / 1000)
+    cap.set(cv2.CAP_PROP_POS_FRAMES, desired_start_frame)
+    frame_index = desired_start_frame
     
     while cap.isOpened():
         ret, frame = cap.read()
@@ -74,63 +84,51 @@ def overlay_objects_on_video(osz_path, difficulty, output_path="output_video.mp4
         
         frame_start_time = frame_index * ms_per_frame - offset_ms
         frame_end_time = frame_start_time + ms_per_frame
-        current_time_ms = frame_start_time
-        
         
         mask = np.zeros((height, width), dtype=np.uint8)
         approach_mask = np.zeros((height, width), dtype=np.uint8)
         
-        
         visible_objects = []
         for obj in hit_objects:
             appear_time = obj.time - approach_time_ms
-            
             
             if isinstance(obj, Slider):
                 hit_end_time = obj.time + obj.ball.total_duration
             else:
                 hit_end_time = obj.time
             
-            
             if (appear_time - temporal_buffer_ms <= frame_end_time and 
                 hit_end_time + temporal_buffer_ms >= frame_start_time):
                 visible_objects.append(obj)
             
-            
             if appear_time > frame_end_time + approach_time_ms:
                 break
         
-        
         for obj in visible_objects:
             appear_time = obj.time - approach_time_ms
-            
-            if isinstance(obj, Slider):
-                hit_end_time = obj.time + obj.ball.total_duration
             
             base_mask = obj.get_segmentation_mask(width, height, object_radius)
             mask = np.maximum(mask, base_mask)
             
             if isinstance(obj, Slider):
-                ball_mask = obj.ball.get_segmentation_mask(width, height, current_time_ms, int(object_radius) * 2)
+                ball_mask = obj.ball.get_segmentation_mask(width, height, frame_start_time, int(object_radius) * 2)
                 if np.any(ball_mask):
                     mask = np.maximum(mask, ball_mask)
             
             approach_circle = ApproachCircle((obj.x, obj.y), obj.time, 
                                             approach_time_ms + temporal_buffer_ms, 
                                             object_radius)
-                                            
             thickness = 2
-            circle_mask = approach_circle.get_segmentation_mask(width, height, current_time_ms, thickness)
+            circle_mask = approach_circle.get_segmentation_mask(width, height, frame_start_time, thickness)
             approach_mask = np.maximum(approach_mask, circle_mask)
         
         if np.any(mask) or np.any(approach_mask):
             white_mask = np.zeros((video_height, video_width, 3), dtype=np.uint8)
-            
             combined_white = np.maximum(mask, approach_mask)
             resized_white = cv2.resize(combined_white, (video_width, video_height))
             white_mask[resized_white > 0] = (255, 255, 255)
             
-            cv2.putText(frame, f"Frame: {frame_index} Time: {current_time_ms:.0f}ms", 
+            cv2.putText(frame, f"Frame: {frame_index} Time: {frame_start_time:.0f}ms", 
                       (0, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
             
             alpha = 0.5
@@ -148,8 +146,8 @@ def overlay_objects_on_video(osz_path, difficulty, output_path="output_video.mp4
     
 if __name__ == "__main__":
     overlay_objects_on_video(
-        "320118 Reol - No title",
-        "jieusieu's Lemur", 
+        "2285243 Jeff Williams feat. Casey Lee Williams - Time to Say Goodbye (TV Size)",
+        "No Return", 
         "output_with_objects.mp4"
     )
 
