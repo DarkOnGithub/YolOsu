@@ -40,22 +40,31 @@ class HitCircle(HitObject):
 class Slider(HitObject):
     def __init__(self, x, y, time, curve_type, curve_points, length, beat_duration, repeats=1, velocity_multiplier=1.0,
                 resolution_width=192, resolution_height=144):
-
         super().__init__(x, y, time, resolution_width, resolution_height)
         self.curve_type = curve_type.lower()
         self.curve_points = [self.convert_point(x, y) for x, y in curve_points]
         self.slider_multiplier = 1.4  
         self.velocity_multiplier = velocity_multiplier
         self.beat_duration = beat_duration
-        full_points = [(self.x, self.y)] + self.curve_points
-        self.curve = self.create_curve(full_points)
+        
         self.original_length = float(length)
-        self.repeats = repeats
         self.desired_length = self.calculate_scaled_length(length)
+        
+        scale_factor = (self.desired_length / self.original_length) if self.original_length != 0 else 1.0
+        scaled_curve_points = [
+            (
+                self.x + (point[0] - self.x) * scale_factor,
+                self.y + (point[1] - self.y) * scale_factor
+            )
+            for point in self.curve_points
+        ]
+        full_points = [(self.x, self.y)] + scaled_curve_points
+        
+        self.curve = self.create_curve(full_points)
         self.actual_length = self.curve.get_length()
-        self.length_ratio = self.desired_length / max(self.actual_length, 0.001)
+        self.repeats = repeats
         self.ball = SliderBall(self, velocity_multiplier)
-
+        
     def calculate_scaled_length(self, length):
         scale_factor = (0.8 * self.resolution_height) / 384
         return float(length) * scale_factor
@@ -72,7 +81,6 @@ class Slider(HitObject):
 
     def get_segmentation_mask(self, width, height, radius):
         mask = np.zeros((height, width), dtype=np.uint8)
-        
         if self.curve.get_length() <= 0:
             return mask
         
@@ -95,6 +103,7 @@ class Slider(HitObject):
         
         radius_int = int(round(radius))
         for x, y in points:
+            print(x,y)
             cv2.circle(mask, (x, y), radius_int, 1, -1)
         
         return mask
@@ -143,14 +152,29 @@ class SliderBall:
         self.slider = slider
         self.velocity_multiplier = velocity_multiplier
         
-        slider_speed = self.slider.slider_multiplier * 100 * self.velocity_multiplier
-        self.duration_per_repeat = (self.slider.original_length / slider_speed) * self.slider.beat_duration
-        
+        # Calculate duration based on ACTUAL curve length
+        slider_velocity = self.slider.slider_multiplier * 100 * self.velocity_multiplier
+        self.duration_per_repeat = (self.slider.actual_length / slider_velocity) * self.slider.beat_duration
         self.total_duration = self.duration_per_repeat * self.slider.repeats
         
         self.start_time = self.slider.time
         self.end_time = self.start_time + self.total_duration
         
+    def get_position_at_progress(self, progress):
+        if progress <= 1.0:
+            base_x, base_y = self.slider.curve.point_at(progress)
+        else:
+            # Extend beyond curve using end direction
+            end_x, end_y = self.slider.curve.point_at(1.0)
+            dx, dy = self.slider.curve.get_end_direction()
+            extension_length = (progress - 1.0) * self.slider.actual_length
+            base_x = end_x + dx * extension_length
+            base_y = end_y + dy * extension_length
+        
+        # Clamp to screen boundaries
+        final_x = max(0, min(base_x, self.slider.resolution_width - 1))
+        final_y = max(0, min(base_y, self.slider.resolution_height - 1))
+        return final_x, final_y
     def get_position_at_time(self, current_time):
         if current_time <= self.start_time:
             return self.slider.x, self.slider.y
@@ -172,46 +196,6 @@ class SliderBall:
             
         return self.get_position_at_progress(repeat_progress)
     
-    def get_position_at_progress(self, progress):
-        if progress <= 1.0:
-            base_x, base_y = self.slider.curve.point_at(progress)
-        else:
-            end_x, end_y = self.slider.curve.point_at(1.0)
-            
-            if len(self.slider.curve_points) > 0:
-                prev_x, prev_y = self.slider.curve_points[-1]
-            else:
-                prev_x, prev_y = self.slider.x, self.slider.y
-                
-            dx = end_x - prev_x
-            dy = end_y - prev_y
-            
-            dist = math.sqrt(dx*dx + dy*dy)
-            if dist > 0:
-                dx /= dist
-                dy /= dist
-                
-            # Calculate extension length
-            extension_progress = progress - 1.0
-            extension_length = extension_progress * self.slider.actual_length
-            
-            # Apply extension in straight line
-            base_x = end_x + dx * extension_length
-            base_y = end_y + dy * extension_length
-        
-        # Apply length scaling
-        if self.slider.length_ratio != 1.0:
-            scaled_x = self.slider.x + (base_x - self.slider.x) * self.slider.length_ratio
-            scaled_y = self.slider.y + (base_y - self.slider.y) * self.slider.length_ratio
-            final_x, final_y = scaled_x, scaled_y
-        else:
-            final_x, final_y = base_x, base_y
-        
-        # Clamp coordinates to video bounds
-        final_x = max(0, min(final_x, self.slider.resolution_width - 1))
-        final_y = max(0, min(final_y, self.slider.resolution_height - 1))
-        
-        return final_x, final_y
             
     def get_segmentation_mask(self, width, height, current_time, ball_radius):
         mask = np.zeros((height, width), dtype=np.uint8)

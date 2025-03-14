@@ -581,7 +581,7 @@
 	"Recording": {
 		"FrameWidth": 192,
 		"FrameHeight": 144,
-		"FPS": 60,
+		"FPS": 1000,
 		"EncodingFPSCap": 0,
 		"Encoder": "libx264",
 		"libx264": {

@@ -22,7 +22,9 @@ class Curve(ABC):
 
     def get_points(self):
         return self.points
-
+    @abstractmethod
+    def get_end_direction(self):
+        pass
 class Linear(Curve):
     def _calculate(self):
         if len(self.points) < 2:
@@ -64,7 +66,15 @@ class Linear(Curve):
             p1[0] + (p2[0] - p1[0]) * t_segment,
             p1[1] + (p2[1] - p1[1]) * t_segment
         )
-
+    def get_end_direction(self):
+            if len(self.points) < 2:
+                return (0, 0)
+            p1 = self.points[-1]
+            p2 = self.points[-2] if len(self.points) >= 2 else p1
+            dx = p1[0] - p2[0]
+            dy = p1[1] - p2[1]
+            length = math.hypot(dx, dy)
+            return (dx/length, dy/length) if length > 0 else (0, 0)
 class Bezier(Curve):
     def _calculate(self):
         if len(self.points) < 2:
@@ -121,7 +131,14 @@ class Bezier(Curve):
         t_segment = (target - distance1) / (distance2 - distance1)
         t_final = t1 + (t2 - t1) * t_segment
         return self._de_casteljau(t_final)
-
+    def get_end_direction(self):
+        if len(self.points) < 2:
+            return (0, 0)
+        n = len(self.points) - 1  # Degree of curve
+        dx = (self.points[-1][0] - self.points[-2][0]) * n
+        dy = (self.points[-1][1] - self.points[-2][1]) * n
+        length = math.hypot(dx, dy)
+        return (dx/length, dy/length) if length > 0 else (0, 0)
 class Catmull(Curve):
     def __init__(self, points, alpha=0.5):
         self.alpha = alpha
@@ -221,11 +238,19 @@ class Catmull(Curve):
         y = a*t_segment**3 + b*t_segment**2 + c*t_segment + d
 
         return (x, y)
-
+    def get_end_direction(self):
+        # Sample last two points of the curve
+        p1 = self.point_at(1.0)
+        p2 = self.point_at(0.99)
+        dx = p1[0] - p2[0]
+        dy = p1[1] - p2[1]
+        length = math.hypot(dx, dy)
+        return (dx/length, dy/length) if length > 0 else (0, 0)
 class Perfect(Curve):
     def _calculate(self):
         if len(self.points) != 3:
-            self.length = 0.0
+            self.linear = Linear(self.points)
+            self.length = self.linear.get_length()
             return
 
         p1, p2, p3 = self.points
@@ -235,13 +260,20 @@ class Perfect(Curve):
             self.length = self.linear.get_length()
             return
 
-        self.start_angle = math.atan2(p1[1]-self.center[1], p1[0]-self.center[0])
-        self.end_angle = math.atan2(p3[1]-self.center[1], p3[0]-self.center[0])
+        self.start_angle = math.atan2(p1[1] - self.center[1], p1[0] - self.center[0])
+        self.end_angle = math.atan2(p3[1] - self.center[1], p3[0] - self.center[0])
         self.angle_diff = self.end_angle - self.start_angle
 
-        cross = (p2[0]-p1[0])*(p3[1]-p2[1]) - (p2[1]-p1[1])*(p3[0]-p2[0])
-        if (cross > 0 and self.angle_diff > 0) or (cross < 0 and self.angle_diff < 0):
-            self.angle_diff -= math.copysign(2*math.pi, self.angle_diff)
+        cross = (p2[0] - p1[0]) * (p3[1] - p2[1]) - (p2[1] - p1[1]) * (p3[0] - p2[0])
+        # Adjust angle_diff based on cross product direction
+        if cross > 0:
+            # Ensure angle_diff is positive (counter-clockwise)
+            if self.angle_diff < 0:
+                self.angle_diff += 2 * math.pi
+        else:
+            # Ensure angle_diff is negative (clockwise)
+            if self.angle_diff > 0:
+                self.angle_diff -= 2 * math.pi
 
         self.length = abs(self.angle_diff) * self.radius
 
@@ -250,16 +282,12 @@ class Perfect(Curve):
         bx, by = p2
         cx, cy = p3
 
-        d = 2*(ax*(by - cy) + bx*(cy - ay) + cx*(ay - by))
+        d = 2 * (ax * (by - cy) + bx * (cy - ay) + cx * (ay - by))
         if d == 0:
             return None, 0
 
-        ux = ((ax**2 + ay**2)*(by - cy) + 
-             (bx**2 + by**2)*(cy - ay) + 
-             (cx**2 + cy**2)*(ay - by)) / d
-        uy = ((ax**2 + ay**2)*(cx - bx) + 
-             (bx**2 + by**2)*(ax - cx) + 
-             (cx**2 + cy**2)*(bx - ax)) / d
+        ux = ((ax**2 + ay**2) * (by - cy) + (bx**2 + by**2) * (cy - ay) + (cx**2 + cy**2) * (ay - by)) / d
+        uy = ((ax**2 + ay**2) * (cx - bx) + (bx**2 + by**2) * (ax - cx) + (cx**2 + cy**2) * (bx - ax)) / d
 
         radius = math.hypot(ax - ux, ay - uy)
         return (ux, uy), radius
@@ -275,3 +303,8 @@ class Perfect(Curve):
             self.center[0] + self.radius * math.cos(angle),
             self.center[1] + self.radius * math.sin(angle)
         )
+    def get_end_direction(self):
+        if self.center is None or len(self.points) != 3:
+            return (0, 0)
+        angle = self.end_angle
+        return (-math.sin(angle), math.cos(angle))
